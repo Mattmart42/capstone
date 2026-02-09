@@ -1,0 +1,37 @@
+# --- Security (CRITICAL) ---
+# Never commit your API keys
+.env
+.env.local
+.venv
+env/
+venv/
+ENV/
+backend/.env
+backend/venv/
+.venv/
+
+# --- Python ---
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# --- Distribution / Packaging ---
+dist/
+build/
+*.egg-info/
+
+# --- IDEs and Editors ---
+# You don't want to share your personal editor settings
+.vscode/
+.idea/
+.DS_Store
+
+# --- Logs ---
+*.log
+
+# --- Data Files (Optional) ---
+# If your job dataset is huge (e.g., large CSVs), ignore them too
+# and just keep the script that processes them.
+# jobs_data.csv
