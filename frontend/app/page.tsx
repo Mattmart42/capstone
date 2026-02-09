@@ -1,24 +1,29 @@
-'use client';
-
-import { useEffect, useState } from 'react';
-import axios from 'axios';
+import Link from 'next/link'
 
 export default function Home() {
-  const [status, setStatus] = useState("Checking brain...");
-
-  useEffect(() => {
-    // We assume backend is running on port 8000
-    axios.get('http://127.0.0.1:8000/health')
-      .then(res => setStatus(`Brain says: ${res.data.status}`))
-      .catch(err => setStatus("Brain is offline 🔴"));
-  }, []);
-
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gray-900 text-white">
-      <h1 className="text-4xl font-bold mb-4">Ikigai Nexus</h1>
-      <p className="text-xl text-green-400 font-mono border border-green-400 p-4 rounded">
-        {status}
-      </p>
+    <main className="flex min-h-screen flex-col items-center justify-center p-24 bg-gray-900 text-white">
+      <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
+        <p className="fixed left-0 top-0 flex w-full justify-center border-b border-gray-300 bg-gradient-to-b from-zinc-200 pb-6 pt-8 backdrop-blur-2xl dark:border-neutral-800 dark:bg-zinc-800/30 dark:from-inherit lg:static lg:w-auto  lg:rounded-xl lg:border lg:bg-gray-200 lg:p-4 lg:dark:bg-zinc-800/30">
+          IkigAI &nbsp;
+          <code className="font-mono font-bold">Capstone Project</code>
+        </p>
+        
+        <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-white via-white dark:from-black dark:via-black lg:static lg:h-auto lg:w-auto lg:bg-none">
+          <Link 
+            href="/login"
+            className="rounded-full border border-transparent bg-indigo-600 px-8 py-3 text-base font-medium text-white hover:bg-indigo-700 md:text-lg md:px-10"
+          >
+            Login / Sign Up
+          </Link>
+        </div>
+      </div>
+
+      <div className="relative flex place-items-center before:absolute before:h-[300px] before:w-[480px] before:-translate-x-1/2 before:rounded-full before:bg-gradient-radial before:from-white before:to-transparent before:blur-2xl before:content-[''] after:absolute after:-z-20 after:h-[180px] after:w-[240px] after:translate-x-1/3 after:bg-gradient-conic after:from-sky-200 after:via-blue-200 after:blur-2xl after:content-[''] before:dark:bg-gradient-to-br before:dark:from-transparent before:dark:to-blue-700 before:dark:opacity-10 after:dark:from-sky-900 after:dark:via-[#0141ff] after:dark:opacity-40 before:lg:h-[360px] z-[-1]">
+        <h1 className="text-6xl font-bold tracking-tight">
+          Find Your <span className="text-indigo-400">Ikigai</span>
+        </h1>
+      </div>
     </main>
-  );
+  )
 }
