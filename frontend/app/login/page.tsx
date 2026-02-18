@@ -47,9 +47,9 @@ export default function LoginPage() {
       <div className="w-full max-w-md space-y-8 rounded-lg bg-white p-6 shadow-md">
         <div className="text-center">
           <h2 className="text-3xl font-extrabold text-gray-900">
-            Welcome to IkigAI
+            Welcome
           </h2>
-          <p className="mt-2 text-sm text-gray-600">Sign in to find your path</p>
+          <p className="mt-2 text-sm text-gray-600">Sign in continue</p>
         </div>
         
         <div className="space-y-4">

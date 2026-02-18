@@ -18,7 +18,7 @@ export default async function UploadPage() {
       <div className="w-full max-w-xl rounded-lg bg-white p-8 shadow-lg">
         <h1 className="mb-2 text-2xl font-bold text-gray-900">Upload Your Resume</h1>
         <p className="mb-6 text-gray-500">
-          Upload your PDF resume to generate your Ikigai profile.
+          Upload your PDF resume to start your profile.
         </p>
         
         {/* Pass the user ID so we can name the file correctly */}
