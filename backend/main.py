@@ -122,6 +122,22 @@ async def update_user_profile(user_id: str, new_text: str):
 def health_check():
     return {"status": "active"}
 
+@app.get("/chat/history/{user_id}")
+async def get_chat_history(user_id: str):
+    """Fetches the chat history for a specific user from Supabase."""
+    try:
+        # Fetch messages, ordered by creation time (oldest first)
+        response = supabase.table("chat_messages") \
+            .select("id, role, content") \
+            .eq("user_id", user_id) \
+            .order("created_at") \
+            .execute()
+            
+        return {"messages": response.data}
+    except Exception as e:
+        print(f"Error fetching history: {e}")
+        raise HTTPException(status_code=500, detail="Could not fetch chat history")
+
 @app.post("/chat")
 async def chat_endpoint(request: ChatRequest, background_tasks: BackgroundTasks):
     # 1. Get latest message
