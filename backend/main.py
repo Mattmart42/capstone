@@ -39,6 +39,7 @@ class Message(BaseModel):
 class ChatRequest(BaseModel):
     messages: List[Message]
     user_id: str
+    mode: str = "probe"
 
 class UserProfile(BaseModel):
     passions: List[str] = []
@@ -57,64 +58,80 @@ async def save_message(user_id: str, role: str, content: str):
     except Exception as e:
         print(f"Error saving message: {e}")
 
-# --- NEW: The Background Listener ---
+# --- NEW: The Node-Based Background Listener ---
 async def update_user_profile(user_id: str, new_text: str):
-    print(f"🕵️ Listener waking up for user {user_id}...")
+    print(f"🕵️ Listener waking up to analyze nodes for {user_id}...")
     
     try:
-        # 1. Fetch current profile (Using .execute() avoids the 0-rows crash)
+        # 1. Fetch current profile to get existing nodes
         current_data = supabase.table("profiles").select("*").eq("id", user_id).execute()
         
-        # If no profile exists (empty list), create a default one
         if not current_data.data:
             print("No existing profile found. Creating a new one...")
-            existing_profile = {"passions": [], "skills": [], "values": [], "preferences": []}
+            existing_nodes = []
         else:
-            existing_profile = current_data.data[0] # Get the first item
+            # We look for 'ikigai_nodes', default to empty list if missing
+            existing_nodes = current_data.data[0].get("ikigai_nodes", [])
 
-        # 2. Ask GPT-4o-mini to extract new facts
+        # 2. Ask GPT-4o-mini to extract/update entities
         extraction_prompt = f"""
-        You are a smart data extractor. 
-        Your goal is to update the user's "Ikigai Profile" based on their latest message.
-        
-        CURRENT PROFILE:
-        Passions: {existing_profile.get('passions', [])}
-        Skills: {existing_profile.get('skills', [])}
-        Values (Mission): {existing_profile.get('values', [])}
-        Preferences (Vocation): {existing_profile.get('preferences', [])}
+        You are a logical data extractor for an Ikigai mapping application.
+        Your job is to identify distinct concepts, activities, or interests the user mentions, and evaluate them against the 4 pillars of Ikigai.
+
+        The 4 Pillars (Boolean values):
+        - ik: What they love (Passion/Interest)
+        - i: What they are good at (Skill/Talent)
+        - g: What the world needs (Mission/Demand)
+        - ai: What they can be paid for (Vocation/Marketability)
+
+        CURRENT NODES:
+        {json.dumps(existing_nodes, indent=2)}
         
         LATEST USER MESSAGE:
         "{new_text}"
         
         INSTRUCTIONS:
-        - Analyze the message for ANY new information related to the 4 categories.
-        - Merge it with the Current Profile.
-        - Do not duplicate items.
-        - Return ONLY a JSON object with keys: passions, skills, values, preferences.
+        1. Analyze the message for ANY concepts (e.g., "Distance Running", "Python Development", "Public Speaking").
+        2. If a concept matches an existing node, UPDATE its boolean values based on the new context. Do not override a 'true' with a 'false' unless the user explicitly changed their mind.
+        3. If it's a new concept, CREATE a new node.
+        4. If the user doesn't know or hasn't stated if a pillar applies, set it to `false`.
+        5. Return ONLY a JSON object with a single key "nodes" containing the array of updated/new node objects.
+
+        EXAMPLE OUTPUT FORMAT:
+        {{
+          "nodes": [
+            {{
+              "concept": "Distance Running",
+              "ik": true,
+              "i": true,
+              "g": false,
+              "ai": false
+            }}
+          ]
+        }}
         """
 
         response = await openai_client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "system", "content": extraction_prompt}],
-            response_format={"type": "json_object"} 
+            response_format={"type": "json_object"} # Force JSON output
         )
         
-        new_profile_json = json.loads(response.choices[0].message.content)
+        # 3. Parse the AI's output
+        result_json = json.loads(response.choices[0].message.content)
+        updated_nodes = result_json.get("nodes", existing_nodes)
         
-        # 3. Save updated profile to Supabase
+        # 4. Save updated nodes back to Supabase
         supabase.table("profiles").upsert({
             "id": user_id,
-            "passions": new_profile_json.get("passions", []),
-            "skills": new_profile_json.get("skills", []),
-            "values": new_profile_json.get("values", []),
-            "preferences": new_profile_json.get("preferences", []),
+            "ikigai_nodes": updated_nodes,
             "updated_at": "now()"
         }).execute()
         
-        print(f"✅ Profile updated for {user_id}")
+        print(f"✅ Ikigai nodes updated for {user_id}")
 
     except Exception as e:
-        print(f"❌ Error updating profile: {e}")
+        print(f"❌ Error updating nodes: {e}")
 
 # --- Endpoints ---
 
@@ -146,28 +163,106 @@ async def chat_endpoint(request: ChatRequest, background_tasks: BackgroundTasks)
     # 2. Save User Message
     asyncio.create_task(save_message(request.user_id, "user", latest_msg.content))
 
-    # 3. TRIGGER THE LISTENER (This runs in background!)
+    # 3. TRIGGER THE LISTENER (Runs in background)
     if not TEST_MODE and latest_msg.role == "user":
         background_tasks.add_task(update_user_profile, request.user_id, latest_msg.content)
 
-    # --- Response Logic ---
-    if TEST_MODE:
-        async def mock_stream():
-            fake_response = "I am listening... (Check your backend terminal to see if I extracted your data!)"
-            for word in fake_response.split():
-                yield word + " "
-                await asyncio.sleep(0.1)
-            asyncio.create_task(save_message(request.user_id, "assistant", fake_response))
-        return StreamingResponse(mock_stream(), media_type="text/plain")
+    # --- NEW: 4. FETCH LONG-TERM MEMORY ---
+    profile_context = "You do not know anything about this user yet."
+    try:
+        profile_response = supabase.table("profiles").select("*").eq("id", request.user_id).execute()
+        if profile_response.data:
+            nodes = profile_response.data[0].get('ikigai_nodes', [])
 
-    # Real AI Response
+            formatted_nodes = "\n".join([
+                f"- {n['concept']}: Love(ik):{n['ik']}, Good At(i):{n['i']}, World Needs(g):{n['g']}, Paid For(ai):{n['ai']}" 
+                for n in nodes
+            ])
+
+            profile_context = f"Here is the user's current Ikigai map:\n{formatted_nodes or 'No concepts mapped yet.'}"
+    except Exception as e:
+        print(f"Error fetching profile context: {e}")
+
+    # --- DYNAMIC MODE INSTRUCTIONS ---
+    mode_instructions = {
+        "absorb": """
+        CURRENT GOAL: ACTIVE LISTENING.
+        - Validate the user's input and acknowledge what they shared.
+        - Do NOT ask any new questions.
+        - Do NOT offer any career advice, side project ideas, or solutions.
+        - Keep your response extremely brief (1-2 sentences max). Give them space to keep talking.
+        """,
+        
+        "probe": """
+        CURRENT GOAL: PROBING & DISCOVERY.
+        - Look at the user's current Ikigai nodes. Find concepts that have 'false' or missing values.
+        - Ask exactly ONE targeted, thought-provoking question to figure out if that concept can fulfill another pillar (e.g., "How could you monetize X?" or "What specific part of Y do you actually enjoy?").
+        - Do NOT give career advice or suggest paths yet. You are strictly gathering data.
+        """,
+        
+        "advise": """
+        CURRENT GOAL: SYNTHESIS & ADVICE.
+        - Review the user's Ikigai nodes.
+        - Suggest actionable, specific career paths, side projects, or lifestyle shifts that move their existing concepts closer to the center of the Ikigai (where ik, i, g, and ai are all true).
+        - Connect the dots between their disparate nodes. 
+        - Be pragmatic and realistic.
+        """
+    }
+
+    # Fallback to 'probe' if an unknown mode is sent
+    current_instructions = mode_instructions.get(request.mode, mode_instructions["probe"])
+
+    # --- 5. INJECT MEMORY INTO SYSTEM PROMPT ---
     system_prompt = {
         "role": "system",
-        "content": "You are an empathetic career coach helping the user find their Ikigai..."
+        "content": f"""You are a career sensei. You are kind yet stern. You are insightful, but let the user find their own way. You are zen, but not overly spiritual. 
+        You exist to guide the user on a journey of self-discovery to find their Ikigai - the place where What they love, What they are good at, What the world needs, and What they can be paid for intersect.
+        
+        {profile_context}
+
+        {current_instructions}
+        
+        - Make sure response lengths match the content of the reponse.
+        - Keep it short where necessary and verbose as needed.
+
+        This is how the idea of Ikigai works, keep it in mind as you chat with the user:
+
+        4 pillar mappings:
+         - What they love: ik
+         - What they are good at: i
+         - What the world needs: g
+         - What they can be paid for: ai
+
+        Overlap of two pillars:
+         - A passion: ik i
+         - A mission: ik g
+         - A vocation: g ai
+         - A profession: i ai
+        
+        Overlap of three pillars:
+         - Satisfaction but uselessness: ik i ai
+         - Comfortable but emptiness: i g ai
+         - Excitement but uncertainty: ik g ai
+         - Fullness but poverty: ik i g
+
+        Overlap of all four pillars:
+         - A reason for being: ikigai
+
+        """
     }
-    
-    # We feed the last 10 messages for context
+
+    # 6. Prepare messages (System Prompt + Last 10 Chat Messages)
     final_messages = [system_prompt] + [msg.model_dump() for msg in request.messages[-10:]]
+
+    # --- Response Generator ---
+    if TEST_MODE:
+        async def mock_stream():
+            fake_response = f"I am testing memory. Here is what I see: {profile_context}"
+            for word in fake_response.split():
+                yield word + " "
+                await asyncio.sleep(0.05)
+            asyncio.create_task(save_message(request.user_id, "assistant", fake_response))
+        return StreamingResponse(mock_stream(), media_type="text/plain")
 
     async def generate_stream():
         full_response = ""
