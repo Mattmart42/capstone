@@ -13,7 +13,26 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isFetchingHistory, setIsFetchingHistory] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    async function fetchHistory() {
+      try {
+        const response = await fetch(`http://127.0.0.1:8000/chat/history/${userId}`)
+        if (response.ok) {
+          const data = await response.json()
+          setMessages(data.messages)
+        }
+      } catch (error) {
+        console.error("Failed to fetch chat history:", error)
+      } finally {
+        setIsFetchingHistory(false)
+      }
+    }
+
+    fetchHistory()
+  }, [userId])
 
   // Auto-scroll
   useEffect(() => {
@@ -104,7 +123,13 @@ export default function ChatInterface({ userId }: { userId: string }) {
 
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-        {messages.length === 0 && (
+        {isFetchingHistory && (
+          <div className="flex justify-center mt-10">
+            <div className="animate-pulse text-indigo-500">Loading your conversation...</div>
+          </div>
+        )}
+
+        {!isFetchingHistory && messages.length === 0 && (
           <div className="text-center text-gray-500 mt-10">
             <p>👋 Hi there! I'm here to help you find your path.</p>
             <p className="text-sm">Tell me a bit about yourself to get started.</p>
