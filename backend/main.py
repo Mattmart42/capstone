@@ -1,6 +1,7 @@
 import os
 import json
 import asyncio
+import PyPDF2
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,6 +10,7 @@ from typing import List, Optional
 from openai import AsyncOpenAI
 from supabase import create_client, Client
 from dotenv import load_dotenv
+from io import BytesIO
 
 load_dotenv()
 
@@ -46,6 +48,10 @@ class UserProfile(BaseModel):
     skills: List[str] = []
     values: List[str] = []
     preferences: List[str] = []
+
+class ResumeRequest(BaseModel):
+    user_id: str
+    file_path: str
 
 # --- Helper: Save Chat Message ---
 async def save_message(user_id: str, role: str, content: str):
@@ -138,6 +144,75 @@ async def update_user_profile(user_id: str, new_text: str):
 @app.get("/health")
 def health_check():
     return {"status": "active"}
+
+@app.post("/process-resume")
+async def process_resume(request: ResumeRequest):
+    print(f"📄 Processing resume for user {request.user_id}...")
+    try:
+        # 1. Download the file from Supabase Storage
+        file_data = supabase.storage.from_("resumes").download(request.file_path)
+        
+        # 2. Extract Text from PDF bytes
+        pdf_file = BytesIO(file_data)
+        reader = PyPDF2.PdfReader(pdf_file)
+        extracted_text = ""
+        for page in reader.pages:
+            extracted_text += page.extract_text() + "\n"
+            
+        # 3. Fetch current nodes
+        current_data = supabase.table("profiles").select("*").eq("id", request.user_id).execute()
+        existing_nodes = []
+        if current_data.data:
+            existing_nodes = current_data.data[0].get("ikigai_nodes", [])
+
+        # 4. Ask GPT-4o-mini to extract nodes from the resume
+        extraction_prompt = f"""
+        You are a logical data extractor for an Ikigai mapping application.
+        The user has uploaded their resume. Extract their distinct professional concepts, hard skills, and roles.
+
+        The 4 Pillars (Boolean values):
+        - ik: What they love (Passion/Interest)
+        - i: What they are good at (Skill/Talent)
+        - g: What the world needs (Mission/Demand)
+        - ai: What they can be paid for (Vocation/Marketability)
+
+        CURRENT NODES:
+        {json.dumps(existing_nodes, indent=2)}
+        
+        RESUME TEXT:
+        "{extracted_text[:4000]}" # Limiting to 4k chars to ensure we capture the most relevant recent experience
+        
+        INSTRUCTIONS:
+        1. Analyze the resume for concepts (e.g., "React.js", "Project Management", "Data Analysis", "Distance Running").
+        2. Since this is a resume, the concepts listed usually mean 'i' (Good at) is true. If it was a professional job or formal education, 'ai' (Paid for/Marketable) is true.
+        3. 'ik' (Love) and 'g' (World Needs) should be evaluated carefully. If unsure, set them to `false`.
+        4. If a concept matches an existing node, UPDATE it. Do not override a 'true' with a 'false'.
+        5. If it's a new concept, CREATE a new node.
+        6. Return ONLY a JSON object with a single key "nodes" containing the array of updated/new node objects.
+        """
+
+        response = await openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "system", "content": extraction_prompt}],
+            response_format={"type": "json_object"}
+        )
+        
+        result_json = json.loads(response.choices[0].message.content)
+        updated_nodes = result_json.get("nodes", existing_nodes)
+        
+        # 5. Save to Supabase
+        supabase.table("profiles").upsert({
+            "id": request.user_id,
+            "ikigai_nodes": updated_nodes,
+            "updated_at": "now()"
+        }).execute()
+
+        print(f"✅ Resume processed and nodes updated for {request.user_id}")
+        return {"status": "success", "extracted_text_preview": extracted_text[:100]}
+
+    except Exception as e:
+        print(f"❌ Error processing resume: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/chat/history/{user_id}")
 async def get_chat_history(user_id: str):
