@@ -8,14 +8,20 @@ type Message = {
   content: string
 }
 
+type AIMode = 'absorb' | 'probe' | 'advise'
+
 export default function ChatInterface({ userId }: { userId: string }) {
-  // 1. We manage the state ourselves
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isFetchingHistory, setIsFetchingHistory] = useState(true)
+  
+  // NEW: State to track the AI's current goal
+  const [mode, setMode] = useState<AIMode>('probe') 
+  
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
+  // Fetch Chat History on Mount
   useEffect(() => {
     async function fetchHistory() {
       try {
@@ -43,20 +49,17 @@ export default function ChatInterface({ userId }: { userId: string }) {
     e.preventDefault()
     if (!input.trim() || isLoading) return
 
-    // 2. Optimistically add user message
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
       content: input
     }
     
-    // Clear input and show loading state
     setMessages(prev => [...prev, userMessage])
     setInput('')
     setIsLoading(true)
 
     try {
-      // 3. Create a placeholder for the AI's response
       const aiMessageId = (Date.now() + 1).toString()
       setMessages(prev => [...prev, {
         id: aiMessageId,
@@ -64,12 +67,13 @@ export default function ChatInterface({ userId }: { userId: string }) {
         content: ''
       }])
 
-      // 4. Call the Backend Manually
+      // UPDATED: Now we pass the 'mode' to the backend
       const response = await fetch('http://127.0.0.1:8000/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: userId,
+          mode: mode, // <--- INJECTING THE SELECTED MODE HERE
           messages: [...messages, userMessage].map(m => ({
             role: m.role,
             content: m.content
@@ -80,7 +84,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
       if (!response.ok) throw new Error('Network response was not ok')
       if (!response.body) throw new Error('No response body')
 
-      // 5. Read the Stream (The "Typing" Effect)
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
       let done = false
@@ -92,7 +95,6 @@ export default function ChatInterface({ userId }: { userId: string }) {
         const chunkValue = decoder.decode(value, { stream: true })
         accumulatedText += chunkValue
 
-        // Update the LAST message with the new chunk
         setMessages(prev => prev.map(msg => 
           msg.id === aiMessageId 
             ? { ...msg, content: accumulatedText }
@@ -163,14 +165,52 @@ export default function ChatInterface({ userId }: { userId: string }) {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
-      <form onSubmit={handleSubmit} className="p-4 bg-white border-t border-gray-100">
-        <div className="flex gap-2">
+      {/* Input Area with Mode Selector */}
+      <div className="bg-white border-t border-gray-100 p-4 flex flex-col gap-3">
+        
+        {/* NEW: Mode Selector UI */}
+        <div className="flex items-center justify-center gap-2">
+          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider mr-2">Goal:</span>
+          
+          <button 
+            onClick={() => setMode('absorb')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+              mode === 'absorb' ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+            }`}
+          >
+            Listen
+          </button>
+          
+          <button 
+            onClick={() => setMode('probe')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+              mode === 'probe' ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+            }`}
+          >
+            Ask
+          </button>
+          
+          <button 
+            onClick={() => setMode('advise')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+              mode === 'advise' ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+            }`}
+          >
+            Advise
+          </button>
+        </div>
+
+        {/* Input Form */}
+        <form onSubmit={handleSubmit} className="flex gap-2">
           <input
             className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder-gray-400"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="I really enjoy working with..."
+            placeholder={
+              mode === 'absorb' ? "Hear my thoughts..." :
+              mode === 'probe' ? "Ask me questions..." :
+              "Give me advice..."
+            }
             disabled={isLoading}
           />
           <button
@@ -182,8 +222,8 @@ export default function ChatInterface({ userId }: { userId: string }) {
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
             </svg>
           </button>
-        </div>
-      </form>
+        </form>
+      </div>
     </div>
   )
 }
