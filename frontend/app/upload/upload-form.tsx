@@ -54,7 +54,7 @@ export default function UploadForm({ userId }: { userId: string }) {
         throw new Error(data.detail || 'Failed to process resume')
       }
 
-      setMessage(`Success! Found ${data.extracted_text_preview.length} characters of text.`)
+      setMessage(`Success!`)// Found ${data.extracted_text_preview.length} characters of text.`)
       console.log("Server Response:", data)
       
     } catch (error: any) {
