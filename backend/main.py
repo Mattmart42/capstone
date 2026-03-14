@@ -125,16 +125,45 @@ async def update_user_profile(user_id: str, new_text: str):
             response_format={"type": "json_object"} # Force JSON output
         )
         
-        # 3. Parse the AI's output
         result_json = json.loads(response.choices[0].message.content)
-        updated_nodes = result_json.get("nodes", existing_nodes)
+        new_nodes = result_json.get("nodes", [])
         
-        # 4. Save updated nodes back to Supabase
+        # 1. Create a dictionary of your existing nodes so we can merge safely
+        # We use the lowercase concept name as the key to prevent duplicates
+        node_map = {node["concept"].lower(): node for node in existing_nodes}
+        
+        # 2. Merge the LLM's new nodes into the existing map
+        for new_node in new_nodes:
+            concept_key = new_node["concept"].lower()
+            
+            if concept_key in node_map:
+                # If the concept already exists, safely update it!
+                # We use 'or' so we never accidentally turn a True into a False
+                existing = node_map[concept_key]
+                existing["ik"] = existing.get("ik", False) or new_node.get("ik", False)
+                existing["i"] = existing.get("i", False) or new_node.get("i", False)
+                existing["g"] = existing.get("g", False) or new_node.get("g", False)
+                existing["ai"] = existing.get("ai", False) or new_node.get("ai", False)
+                
+                if "emoji" in new_node:
+                    existing["emoji"] = new_node["emoji"]
+                    
+                node_map[concept_key] = existing
+            else:
+                # If it's a brand new concept, just add it to the map
+                node_map[concept_key] = new_node
+                
+        # 3. Convert the merged dictionary back into a flat list
+        updated_nodes = list(node_map.values())
+        
+        # 4. Save the safely combined list back to Supabase
         supabase.table("profiles").upsert({
             "id": user_id,
             "ikigai_nodes": updated_nodes,
             "updated_at": "now()"
         }).execute()
+        
+        print(f"✅ Merged {len(new_nodes)} updates. Total nodes: {len(updated_nodes)}")
         
         print(f"✅ Ikigai nodes updated for {user_id}")
 
@@ -200,14 +229,44 @@ async def process_resume(request: ResumeRequest):
         )
         
         result_json = json.loads(response.choices[0].message.content)
-        updated_nodes = result_json.get("nodes", existing_nodes)
+        new_nodes = result_json.get("nodes", [])
         
-        # 5. Save to Supabase
+        # 1. Create a dictionary of your existing nodes so we can merge safely
+        # We use the lowercase concept name as the key to prevent duplicates
+        node_map = {node["concept"].lower(): node for node in existing_nodes}
+        
+        # 2. Merge the LLM's new nodes into the existing map
+        for new_node in new_nodes:
+            concept_key = new_node["concept"].lower()
+            
+            if concept_key in node_map:
+                # If the concept already exists, safely update it!
+                # We use 'or' so we never accidentally turn a True into a False
+                existing = node_map[concept_key]
+                existing["ik"] = existing.get("ik", False) or new_node.get("ik", False)
+                existing["i"] = existing.get("i", False) or new_node.get("i", False)
+                existing["g"] = existing.get("g", False) or new_node.get("g", False)
+                existing["ai"] = existing.get("ai", False) or new_node.get("ai", False)
+                
+                if "emoji" in new_node:
+                    existing["emoji"] = new_node["emoji"]
+                    
+                node_map[concept_key] = existing
+            else:
+                # If it's a brand new concept, just add it to the map
+                node_map[concept_key] = new_node
+                
+        # 3. Convert the merged dictionary back into a flat list
+        updated_nodes = list(node_map.values())
+        
+        # 4. Save the safely combined list back to Supabase
         supabase.table("profiles").upsert({
-            "id": request.user_id,
+            "id": user_id,
             "ikigai_nodes": updated_nodes,
             "updated_at": "now()"
         }).execute()
+        
+        print(f"✅ Merged {len(new_nodes)} updates. Total nodes: {len(updated_nodes)}")
 
         print(f"✅ Resume processed and nodes updated for {request.user_id}")
         return {"status": "success", "extracted_text_preview": extracted_text[:100]}
