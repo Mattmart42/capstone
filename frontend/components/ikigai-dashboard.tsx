@@ -33,7 +33,43 @@ export default function IkigaiDashboard({ userId }: { userId: string }) {
 
   useEffect(() => {
     fetchNodes()
-  }, [userId])
+
+    // 1. Create a UNIQUE channel name so Next.js doesn't trip over itself
+    const channelName = `profile-updates-${userId}`
+    
+    const profileChannel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'profiles',
+          filter: `id=eq.${userId}` 
+        },
+        (payload) => {
+          console.log('⚡ Realtime Payload:', payload)
+          
+          // If Postgres sends the full data array, use it!
+          if (payload.new && payload.new.ikigai_nodes) {
+            setNodes(payload.new.ikigai_nodes)
+          } else {
+            // Backup: If Postgres only says "hey, a row updated!" but doesn't 
+            // give us the JSON array, manually trigger a fresh fetch.
+            console.log('Data missing from payload, fetching manually...')
+            fetchNodes()
+          }
+        }
+      )
+      .subscribe((status) => {
+        // This will tell us if Supabase actually accepted our connection!
+        console.log(`🔌 Websocket Status [${channelName}]:`, status)
+      })
+
+    return () => {
+      supabase.removeChannel(profileChannel)
+    }
+  }, [userId]) // Removed supabase from dependency array to prevent infinite re-renders
 
   // --- THE 13-SECTION SORTING LOGIC ---
   const zones: Record<string, string[]> = {

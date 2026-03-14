@@ -35,8 +35,54 @@ export default function IkigaiDashboard({ userId }: { userId: string }) {
   }
 
   useEffect(() => {
-    fetchNodes()
-  }, [userId])
+    let profileChannel: any;
+
+    const setupRealtime = async () => {
+      // 1. Await the session to GUARANTEE we aren't anonymous
+      const { data: { session }, error } = await supabase.auth.getSession()
+      
+      if (!session) {
+        console.error("No active session found, Realtime will fail RLS.")
+        return
+      }
+
+      await fetchNodes()
+
+      const channelName = `profile-updates-${userId}`
+      
+      profileChannel = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          { 
+            event: '*', 
+            schema: 'public', 
+            table: 'profiles',
+            // Re-add the filter now that we are securely authenticated!
+            filter: `id=eq.${userId}` 
+          },
+          (payload) => {
+            console.log('⚡ Realtime Payload:', payload)
+            const newRecord = payload.new as { ikigai_nodes?: IkigaiNode[] }
+            if (payload.new && newRecord.ikigai_nodes) {
+              setNodes(newRecord.ikigai_nodes)
+            } else {
+              fetchNodes()
+            }
+          }
+        )
+        .subscribe((status, err) => {
+          console.log(`🔌 Websocket Status [${channelName}]:`, status)
+          if (err) console.error("Websocket Error:", err)
+        })
+    }
+
+    setupRealtime()
+
+    return () => {
+      if (profileChannel) supabase.removeChannel(profileChannel)
+    }
+  }, [userId, supabase])
 
   // --- THE 13-SECTION SORTING LOGIC ---
   // We now store the FULL object so the drawer has all the data
