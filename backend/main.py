@@ -98,16 +98,18 @@ async def update_user_profile(user_id: str, new_text: str):
         
         INSTRUCTIONS:
         1. Analyze the message for ANY concepts (e.g., "Distance Running", "Python Development", "Public Speaking").
-        2. If a concept matches an existing node, UPDATE its boolean values based on the new context. Do not override a 'true' with a 'false' unless the user explicitly changed their mind.
-        3. If it's a new concept, CREATE a new node.
-        4. If the user doesn't know or hasn't stated if a pillar applies, set it to `false`.
-        5. Return ONLY a JSON object with a single key "nodes" containing the array of updated/new node objects.
+        2. Assign a single, highly relevant emoji to the "emoji" field for each concept.
+        3. If a concept matches an existing node, UPDATE its boolean values based on the new context. Do not override a 'true' with a 'false'.
+        4. If it's a new concept, CREATE a new node.
+        5. If the user doesn't know or hasn't stated if a pillar applies, set it to `false`.
+        6. Return ONLY a JSON object with a single key "nodes" containing the array of updated/new node objects.
 
         EXAMPLE OUTPUT FORMAT:
         {{
           "nodes": [
             {{
               "concept": "Distance Running",
+              "emoji": "🏃‍♂️",
               "ik": true,
               "i": true,
               "g": false,
