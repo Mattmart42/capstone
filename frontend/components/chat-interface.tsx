@@ -15,13 +15,9 @@ export default function ChatInterface({ userId }: { userId: string }) {
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isFetchingHistory, setIsFetchingHistory] = useState(true)
-  
-  // NEW: State to track the AI's current goal
   const [mode, setMode] = useState<AIMode>('probe') 
-  
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Fetch Chat History on Mount
   useEffect(() => {
     async function fetchHistory() {
       try {
@@ -111,7 +107,7 @@ export default function ChatInterface({ userId }: { userId: string }) {
   }
 
   return (
-    <div className="flex h-[80vh] flex-col w-full max-w-2xl mx-auto border rounded-xl shadow-xl bg-white overflow-hidden">
+    <div className="flex h-full flex-col w-full bg-white overflow-hidden">
       
       {/* Header */}
       <div className="bg-indigo-600 p-4 text-white">
