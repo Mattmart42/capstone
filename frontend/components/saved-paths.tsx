@@ -42,7 +42,7 @@ export default function SavedPaths({ userId }: { userId: string }) {
 
   // Handle Manual Creation
   const handleSavePath = async () => {
-    if (!newPath.title.trim() || !newPath.description.trim()) return
+    if (!newPath.title.trim()) return
     setIsSaving(true)
 
     const pathToAdd: SavedPath = {
@@ -52,8 +52,17 @@ export default function SavedPaths({ userId }: { userId: string }) {
       created_at: new Date().toISOString()
     }
 
-    const updatedPaths = [...paths, pathToAdd]
     setPaths(updatedNodes => [...updatedNodes, pathToAdd]) // Optimistic update
+
+    // Fetch the latest paths from the database to prevent race conditions
+    const { data } = await supabase
+      .from('profiles')
+      .select('saved_paths')
+      .eq('id', userId)
+      .single()
+
+    const currentPaths = data?.saved_paths || []
+    const updatedPaths = [...currentPaths, pathToAdd]
 
     await supabase
       .from('profiles')
@@ -195,7 +204,7 @@ export default function SavedPaths({ userId }: { userId: string }) {
               </button>
               <button 
                 onClick={handleSavePath}
-                disabled={isSaving || !newPath.title.trim() || !newPath.description.trim()}
+                disabled={isSaving || !newPath.title.trim()}
                 className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-sm font-bold py-2.5 px-6 rounded-xl shadow-sm transition-colors flex items-center justify-center min-w-[120px]"
               >
                 {isSaving ? <span className="animate-pulse">Saving...</span> : 'Save Path'}
