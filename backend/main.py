@@ -11,6 +11,7 @@ from openai import AsyncOpenAI
 from supabase import create_client, Client
 from dotenv import load_dotenv
 from io import BytesIO
+from datetime import datetime
 
 load_dotenv()
 
@@ -157,11 +158,10 @@ async def update_user_profile(user_id: str, new_text: str):
         updated_nodes = list(node_map.values())
         
         # 4. Save the safely combined list back to Supabase
-        supabase.table("profiles").upsert({
-            "id": user_id,
+        supabase.table("profiles").update({
             "ikigai_nodes": updated_nodes,
-            "updated_at": "now()"
-        }).execute()
+            "updated_at": datetime.now().isoformat()
+        }).eq("id", user_id).execute()
         
         print(f"✅ Merged {len(new_nodes)} updates. Total nodes: {len(updated_nodes)}")
         
@@ -292,7 +292,7 @@ async def get_chat_history(user_id: str):
         raise HTTPException(status_code=500, detail="Could not fetch chat history")
 
 @app.post("/chat")
-async def chat_endpoint(request: ChatRequest, background_tasks: BackgroundTasks):
+async def chat_endpoint(request: ChatRequest):
     # 1. Get latest message
     latest_msg = request.messages[-1]
     
@@ -301,7 +301,7 @@ async def chat_endpoint(request: ChatRequest, background_tasks: BackgroundTasks)
 
     # 3. TRIGGER THE LISTENER (Runs in background)
     if not TEST_MODE and latest_msg.role == "user":
-        background_tasks.add_task(update_user_profile, request.user_id, latest_msg.content)
+        asyncio.create_task(update_user_profile(request.user_id, latest_msg.content))
 
     # --- NEW: 4. FETCH LONG-TERM MEMORY ---
     profile_context = "You do not know anything about this user yet."
