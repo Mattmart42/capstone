@@ -56,7 +56,7 @@ export default function IkigaiDashboard({ userId }: { userId: string }) {
   const [isSaving, setIsSaving] = useState(false)
   const [newNodeForm, setNewNodeForm] = useState({ concept: '', ik: false, i: false, g: false, ai: false })
 
-  const supabase = createClient()
+  const [supabase] = useState(() => createClient())
 
   // --- 1. THE CAMERA MATH (CENTER & FIT TO SCREEN) ---
   const resetCamera = useCallback(() => {
@@ -79,22 +79,58 @@ export default function IkigaiDashboard({ userId }: { userId: string }) {
   }, [resetCamera])
 
   // --- 2. DATA FETCHING & REALTIME ---
-  const fetchNodes = async () => {
-    setIsLoading(true)
-    const { data } = await supabase.from('profiles').select('ikigai_nodes').eq('id', userId).single()
-    if (data?.ikigai_nodes) setNodes(data.ikigai_nodes)
-    setIsLoading(false)
-  }
-
   useEffect(() => {
-    fetchNodes()
-    const channelName = `profile-updates-${userId}`
-    const profileChannel = supabase.channel(channelName)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, (payload) => {
-        const newRecord = payload.new as { ikigai_nodes?: IkigaiNode[] }
-        if (newRecord?.ikigai_nodes) setNodes(newRecord.ikigai_nodes)
-      }).subscribe()
-    return () => { supabase.removeChannel(profileChannel) }
+    let isMounted = true;
+    let profileChannel: ReturnType<typeof supabase.channel>;
+
+    const initializeDataAndRealtime = async () => {
+      setIsLoading(true)
+
+      // 1. Fetch initial data
+      const { data } = await supabase.from('profiles').select('ikigai_nodes').eq('id', userId).single()
+      if (isMounted && data?.ikigai_nodes) {
+        setNodes(data.ikigai_nodes)
+      }
+      if (isMounted) setIsLoading(false)
+
+      // 2. THE CRITICAL FIX: Wait for the auth token to load into the client!
+      await supabase.auth.getSession();
+
+      // 3. Setup Realtime Subscription (Now guaranteed to be authenticated)
+      profileChannel = supabase
+        .channel(`profile-updates-${userId}-${Date.now()}`)
+        .on(
+          'postgres_changes',
+          { 
+            event: 'UPDATE', // Best practice: strictly listen for updates
+            schema: 'public', 
+            table: 'profiles', 
+            filter: `id=eq.${userId}` 
+          },
+          (payload) => {
+            console.log("⚡ Realtime Update Caught:", payload)
+            const newRecord = payload.new as { ikigai_nodes?: IkigaiNode[] }
+            
+            if (newRecord?.ikigai_nodes) {
+              setNodes([...newRecord.ikigai_nodes]) 
+            }
+          }
+        )
+        .subscribe((status, err) => {
+          console.log("🔌 Socket Status:", status)
+          if (err) console.error("Socket Error:", err)
+        })
+    }
+
+    initializeDataAndRealtime();
+
+    // Strict Cleanup
+    return () => {
+      isMounted = false;
+      if (profileChannel) {
+        supabase.removeChannel(profileChannel)
+      }
+    }
   }, [userId, supabase])
 
   // --- 3. THE DROP ZONE MATH (RADIAL INTERSECTION & TRASH COLLISION) ---
