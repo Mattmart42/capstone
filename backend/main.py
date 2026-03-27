@@ -305,19 +305,39 @@ async def chat_endpoint(request: ChatRequest):
 
     # --- NEW: 4. FETCH LONG-TERM MEMORY ---
     profile_context = "You do not know anything about this user yet."
+    nodes = []
     try:
         profile_response = supabase.table("profiles").select("*").eq("id", request.user_id).execute()
         if profile_response.data:
-            nodes = profile_response.data[0].get('ikigai_nodes', [])
+            nodes = profile_response.data[0].get('ikigai_nodes', []) or []
 
             formatted_nodes = "\n".join([
-                f"- {n['concept']}: Love(ik):{n['ik']}, Good At(i):{n['i']}, World Needs(g):{n['g']}, Paid For(ai):{n['ai']}" 
+                f"- {n.get('concept', 'Unknown')}: Love(ik):{n.get('ik', False)}, Good At(i):{n.get('i', False)}, World Needs(g):{n.get('g', False)}, Paid For(ai):{n.get('ai', False)}" 
                 for n in nodes
             ])
 
             profile_context = f"Here is the user's current Ikigai map:\n{formatted_nodes or 'No concepts mapped yet.'}"
     except Exception as e:
         print(f"Error fetching profile context: {e}")
+
+    # --- CALCULATE WEAKEST PILLAR ---
+    pillar_counts = {"ik": 0, "i": 0, "g": 0, "ai": 0}
+    for node in nodes:
+        if node.get("ik"): pillar_counts["ik"] += 1
+        if node.get("i"): pillar_counts["i"] += 1
+        if node.get("g"): pillar_counts["g"] += 1
+        if node.get("ai"): pillar_counts["ai"] += 1
+
+    weakest_pillar_key = min(pillar_counts, key=pillar_counts.get)
+    weakest_pillar_count = pillar_counts[weakest_pillar_key]
+    
+    pillar_names = {
+        "ik": "Love",
+        "i": "Good At",
+        "g": "World Needs",
+        "ai": "Paid For"
+    }
+    weakest_pillar_name = pillar_names[weakest_pillar_key]
 
     # --- DYNAMIC MODE INSTRUCTIONS ---
     mode_instructions = {
@@ -347,6 +367,10 @@ async def chat_endpoint(request: ChatRequest):
 
     # Fallback to 'probe' if an unknown mode is sent
     current_instructions = mode_instructions.get(request.mode, mode_instructions["probe"])
+
+    if request.mode == "probe":
+        probe_injection = f"\nSYSTEM NOTE: The user's Ikigai board is currently weakest in the '{weakest_pillar_name}' category (Only {weakest_pillar_count} items). Your goal for this turn is to ask a highly targeted, conversational question to help them brainstorm new ideas specifically for this missing category."
+        current_instructions += probe_injection
 
     # --- 5. INJECT MEMORY INTO SYSTEM PROMPT ---
     system_prompt = {
