@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { X } from 'lucide-react'
 
 type Message = {
   id: string
@@ -10,7 +11,15 @@ type Message = {
 
 type AIMode = 'absorb' | 'probe' | 'advise'
 
-export default function ChatInterface({ userId }: { userId: string }) {
+export default function ChatInterface({ 
+  userId, 
+  activeGem, 
+  clearActiveGem 
+}: { 
+  userId: string, 
+  activeGem: any, 
+  clearActiveGem: () => void 
+}) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -41,18 +50,16 @@ export default function ChatInterface({ userId }: { userId: string }) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!input.trim() || isLoading) return
+  const sendMessage = async (text: string) => {
+    if (!text.trim() || isLoading) return
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
-      content: input
+      content: text
     }
     
     setMessages(prev => [...prev, userMessage])
-    setInput('')
     setIsLoading(true)
 
     try {
@@ -104,6 +111,32 @@ export default function ChatInterface({ userId }: { userId: string }) {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!input.trim() || isLoading) return
+    const textToSend = input
+    setInput('')
+    await sendMessage(textToSend)
+  }
+
+  const handleSuggestionClick = async (suggestion: string) => {
+    await sendMessage(suggestion)
+    clearActiveGem()
+  }
+
+  const getSuggestions = () => {
+    if (!activeGem) return []
+    const suggestions = []
+    if (!activeGem.ai) suggestions.push(`How can I get paid for ${activeGem.concept}?`)
+    if (!activeGem.g) suggestions.push(`How does the world need ${activeGem.concept}?`)
+    if (!activeGem.i) suggestions.push(`How can I get better at ${activeGem.concept}?`)
+    
+    if (activeGem.ik && activeGem.i && activeGem.g && activeGem.ai) {
+      suggestions.push(`How can I scale ${activeGem.concept}?`)
+    }
+    return suggestions.slice(0, 3)
   }
 
   return (
@@ -160,6 +193,34 @@ export default function ChatInterface({ userId }: { userId: string }) {
         )}
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Context Banner */}
+      {activeGem && (
+        <div className="mx-4 mb-2 p-3 bg-white/90 backdrop-blur border border-slate-200 rounded-xl shadow-sm animate-in slide-in-from-bottom-2 duration-200">
+          <div className="flex justify-between items-start mb-2">
+            <div>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Targeting Gem</p>
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1">
+                {activeGem.emoji} {activeGem.concept}
+              </h3>
+            </div>
+            <button onClick={clearActiveGem} className="text-slate-400 hover:text-slate-600">
+              <X size={14} />
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {getSuggestions().map((s, i) => (
+              <button
+                key={i}
+                onClick={() => handleSuggestionClick(s)}
+                className="text-[11px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded-lg border border-indigo-100 hover:bg-indigo-100 transition-colors text-left"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Input Area with Mode Selector */}
       <div className="bg-white border-t border-gray-100 p-4 flex flex-col gap-3">

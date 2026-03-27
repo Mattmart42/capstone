@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { ChevronUp, ChevronDown, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize, X, Trash2, Plus } from 'lucide-react'
 
-type IkigaiNode = {
+export type IkigaiNode = {
   concept: string
   emoji?: string
   ik: boolean // Love
@@ -31,7 +31,7 @@ const ZONE_TITLES: Record<string, string> = {
   exploring: "Unmapped / Exploring"
 }
 
-export default function IkigaiDashboard({ userId }: { userId: string }) {
+export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string, onAskCoach?: (node: IkigaiNode) => void }) {
   const [nodes, setNodes] = useState<IkigaiNode[]>([])
   const [isLoading, setIsLoading] = useState(true)
   
@@ -319,9 +319,20 @@ export default function IkigaiDashboard({ userId }: { userId: string }) {
                 {getShape(score)}
                 
                 {/* Tooltip */}
-                <div className="absolute bottom-full mb-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none flex flex-col items-center">
-                  <div className="bg-slate-900 text-white text-[11px] font-bold px-2.5 py-1 rounded shadow-lg whitespace-nowrap">
+                <div className="absolute bottom-full mb-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto flex flex-col items-center">
+                  <div className="bg-slate-900 text-white text-[11px] font-bold px-2.5 py-1 rounded shadow-lg whitespace-nowrap flex items-center gap-2">
                     {node.concept}
+                    {onAskCoach && (
+                      <button
+                        onPointerDown={(e) => {
+                          e.stopPropagation();
+                          onAskCoach(node);
+                        }}
+                        className="ml-1 bg-indigo-600 hover:bg-indigo-500 text-[9px] px-1.5 py-0.5 rounded transition-colors"
+                      >
+                        Ask Coach
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
