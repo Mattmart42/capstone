@@ -216,7 +216,7 @@ export default function ChatInterface({
 
         {messages.map((m) => {
           // Parse paths if they exist
-          const pathsRegex = /===PATHS_JSON=== (.*?) ===END_PATHS_JSON===/s
+          const pathsRegex = /===PATHS_JSON=== (.*?) ===END_PATHS_JSON===/
           const match = m.content.match(pathsRegex)
           let cleanContent = m.content
           let parsedPaths: any[] = []
