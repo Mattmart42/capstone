@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { X } from 'lucide-react'
+import { X, Save, CheckCircle2 } from 'lucide-react'
+import { createClient } from '@/utils/supabase/client'
 
 type Message = {
   id: string
@@ -25,18 +26,25 @@ export default function ChatInterface({
   const [isLoading, setIsLoading] = useState(false)
   const [isFetchingHistory, setIsFetchingHistory] = useState(true)
   const [mode, setMode] = useState<AIMode>('probe') 
+  const [savedPathIds, setSavedPathIds] = useState<string[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const supabase = createClient()
 
   useEffect(() => {
     async function fetchHistory() {
+      if (!userId) return
+      
       try {
-        const response = await fetch(`http://127.0.0.1:8000/chat/history/${userId}`)
+        const url = `http://localhost:8000/chat/history/${userId}`
+        const response = await fetch(url)
         if (response.ok) {
           const data = await response.json()
           setMessages(data.messages)
+        } else {
+          console.error(`Backend returned ${response.status} for history fetch`)
         }
       } catch (error) {
-        console.error("Failed to fetch chat history:", error)
+        console.error("Failed to fetch chat history. Ensure the Python backend is running at http://localhost:8000. Error:", error)
       } finally {
         setIsFetchingHistory(false)
       }
@@ -49,6 +57,45 @@ export default function ChatInterface({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  const handleSavePath = async (title: string, description: string, pathIndex: number, messageId: string) => {
+    const uniqueId = `${messageId}-${pathIndex}`
+    if (savedPathIds.includes(uniqueId)) return
+
+    try {
+      // 1. Fetch current profile
+      const { data: profile, error: fetchError } = await supabase
+        .from('profiles')
+        .select('saved_paths')
+        .eq('id', userId)
+        .single()
+
+      if (fetchError) throw fetchError
+
+      const currentPaths = profile?.saved_paths || []
+      
+      // 2. Append new path
+      const newPath = {
+        id: Date.now().toString(),
+        title,
+        description,
+        created_at: new Date().toISOString()
+      }
+
+      // 3. Update table
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ saved_paths: [...currentPaths, newPath] })
+        .eq('id', userId)
+
+      if (updateError) throw updateError
+
+      setSavedPathIds(prev => [...prev, uniqueId])
+    } catch (error) {
+      console.error("Error saving path:", error)
+      alert("Failed to save path.")
+    }
+  }
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return
@@ -71,7 +118,7 @@ export default function ChatInterface({
       }])
 
       // UPDATED: Now we pass the 'mode' to the backend
-      const response = await fetch('http://127.0.0.1:8000/chat', {
+      const response = await fetch('http://localhost:8000/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -167,22 +214,75 @@ export default function ChatInterface({
           </div>
         )}
 
-        {messages.map((m) => (
-          <div
-            key={m.id}
-            className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            <div
-              className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow-sm ${
-                m.role === 'user'
-                  ? 'bg-indigo-600 text-white rounded-br-none'
-                  : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none'
-              }`}
-            >
-              <div className="whitespace-pre-wrap">{m.content}</div>
+        {messages.map((m) => {
+          // Parse paths if they exist
+          const pathsRegex = /===PATHS_JSON=== (.*?) ===END_PATHS_JSON===/s
+          const match = m.content.match(pathsRegex)
+          let cleanContent = m.content
+          let parsedPaths: any[] = []
+
+          if (match) {
+            cleanContent = m.content.replace(pathsRegex, '').trim()
+            try {
+              parsedPaths = JSON.parse(match[1])
+            } catch (e) {
+              console.error("Failed to parse paths JSON", e)
+            }
+          }
+
+          return (
+            <div key={m.id} className="flex flex-col space-y-2">
+              <div className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div
+                  className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow-sm ${
+                    m.role === 'user'
+                      ? 'bg-indigo-600 text-white rounded-br-none'
+                      : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none'
+                  }`}
+                >
+                  <div className="whitespace-pre-wrap">{cleanContent}</div>
+                </div>
+              </div>
+
+              {/* Render Path Cards if they exist */}
+              {parsedPaths.length > 0 && (
+                <div className="flex flex-col gap-3 ml-2 mr-8 mt-2">
+                  {parsedPaths.map((path, idx) => {
+                    const isSaved = savedPathIds.includes(`${m.id}-${idx}`)
+                    return (
+                      <div 
+                        key={idx}
+                        className="bg-white/80 backdrop-blur-sm border border-indigo-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-all animate-in fade-in slide-in-from-left-4 duration-300"
+                      >
+                        <div className="flex justify-between items-start gap-4">
+                          <div className="flex-1">
+                            <h4 className="text-indigo-900 font-bold text-sm mb-1">{path.title}</h4>
+                            <p className="text-gray-600 text-xs leading-relaxed">{path.description}</p>
+                          </div>
+                          <button
+                            onClick={() => handleSavePath(path.title, path.description, idx, m.id)}
+                            disabled={isSaved}
+                            className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                              isSaved 
+                                ? 'bg-green-50 text-green-600 cursor-default' 
+                                : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm active:scale-95'
+                            }`}
+                          >
+                            {isSaved ? (
+                              <><CheckCircle2 size={14} /> Saved!</>
+                            ) : (
+                              <><Save size={14} /> Save Path</>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          )
+        })}
         
         {isLoading && messages[messages.length - 1]?.role === 'user' && (
           <div className="flex justify-start">
