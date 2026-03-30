@@ -12,6 +12,7 @@ from supabase import create_client, Client
 from dotenv import load_dotenv
 from io import BytesIO
 from datetime import datetime
+import uuid
 
 load_dotenv()
 
@@ -53,6 +54,13 @@ class UserProfile(BaseModel):
 class ResumeRequest(BaseModel):
     user_id: str
     file_path: str
+
+class ProposedPath(BaseModel):
+    title: str
+    description: str
+
+class PathSuggestions(BaseModel):
+    paths: List[ProposedPath]
 
 # --- Helper: Save Chat Message ---
 async def save_message(user_id: str, role: str, content: str):
@@ -368,6 +376,88 @@ async def chat_endpoint(request: ChatRequest):
     # Fallback to 'probe' if an unknown mode is sent
     current_instructions = mode_instructions.get(request.mode, mode_instructions["probe"])
 
+    # --- NEW: SOLVER AGENT LOGIC (Step 1-3) ---
+    advise_system_note = ""
+    if request.mode == "advise" and nodes:
+        print(f"🧠 Solver Agent active for {request.user_id}...")
+        
+        # 1. Scoring and Prioritization
+        scored_nodes = []
+        for n in nodes:
+            # Calculate overlap score (0-4)
+            score = sum([
+                n.get("ik", False), 
+                n.get("i", False), 
+                n.get("g", False), 
+                n.get("ai", False)
+            ])
+            scored_nodes.append((n, score))
+        
+        # Filter for "centroid" nodes (score 3 or 4)
+        centroid_nodes = [n for n, s in scored_nodes if s >= 3]
+        if not centroid_nodes:
+            # If none exist, take the highest available score(s)
+            max_score = max([s for n, s in scored_nodes]) if scored_nodes else 0
+            centroid_nodes = [n for n, s in scored_nodes if s == max_score]
+        
+        # 2. Structured Generation
+        gen_prompt = f"""
+        You are a world-class career strategist. You specialize in synthesizing various passions, skills, and market needs into cohesive career blueprints.
+        
+        The user has a set of Ikigai nodes. I have prioritized the following "centroid" nodes that show the most promise:
+        {json.dumps(centroid_nodes, indent=2)}
+        
+        INSTRUCTIONS:
+        1. Analyze these nodes and their overlapping pillars.
+        2. Generate 1 or 2 highly synthesized career paths (ProposedPath).
+        3. Each path must have a 'title' (short, punchy) and a 'description' (detailed strategy/blueprint).
+        4. Return ONLY a JSON object with a key 'paths' containing an array of these objects.
+        """
+        
+        try:
+            struct_response = await openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "system", "content": gen_prompt}],
+                response_format={"type": "json_object"}
+            )
+            
+            gen_data = json.loads(struct_response.choices[0].message.content)
+            new_paths = gen_data.get("paths", [])
+            
+            if new_paths:
+                # 3. Auto-Save to Database
+                # Fetch existing saved_paths
+                profile_res = supabase.table("profiles").select("saved_paths").eq("id", request.user_id).execute()
+                existing_paths = []
+                if profile_res.data:
+                    existing_paths = profile_res.data[0].get("saved_paths", []) or []
+                
+                # Append new paths with metadata
+                for p in new_paths:
+                    path_obj = {
+                        "id": str(int(datetime.now().timestamp() * 1000)),
+                        "title": p["title"],
+                        "description": p["description"],
+                        "created_at": datetime.now().isoformat()
+                    }
+                    existing_paths.append(path_obj)
+                    await asyncio.sleep(0.01) # Tiny delay to avoid timestamp collision
+                
+                # Update profiles table
+                supabase.table("profiles").update({
+                    "saved_paths": existing_paths,
+                    "updated_at": datetime.now().isoformat()
+                }).eq("id", request.user_id).execute()
+                
+                # Prepare System Note for conversational hand-off
+                titles_str = ", ".join([p["title"] for p in new_paths])
+                concepts_str = ", ".join([n.get("concept", "Unknown") for n in centroid_nodes])
+                advise_system_note = f"SYSTEM NOTE: You just analyzed the user's board (Prioritized nodes: {concepts_str}) and successfully saved the following career paths to their database: {titles_str}. Warmly tell the user what you generated, explain why it fits their overlapping passions, and invite their feedback."
+                print(f"✅ Saved {len(new_paths)} paths for {request.user_id}")
+
+        except Exception as e:
+            print(f"❌ Error in Solver Agent logic: {e}")
+
     if request.mode == "probe":
         probe_injection = f"\nSYSTEM NOTE: The user's Ikigai board is currently weakest in the '{weakest_pillar_name}' category (Only {weakest_pillar_count} items). Your goal for this turn is to ask a highly targeted, conversational question to help them brainstorm new ideas specifically for this missing category."
         current_instructions += probe_injection
@@ -413,6 +503,10 @@ async def chat_endpoint(request: ChatRequest):
 
     # 6. Prepare messages (System Prompt + Last 10 Chat Messages)
     final_messages = [system_prompt] + [msg.model_dump() for msg in request.messages[-10:]]
+
+    # --- Step 3 Hand-off: Append the silent system note for advise mode ---
+    if advise_system_note:
+        final_messages.append({"role": "system", "content": advise_system_note})
 
     # --- Response Generator ---
     if TEST_MODE:
