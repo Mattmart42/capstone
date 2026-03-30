@@ -40,10 +40,18 @@ class Message(BaseModel):
     role: str
     content: str
 
+class ProposedPath(BaseModel):
+    title: str
+    description: str
+
+class PathSuggestions(BaseModel):
+    paths: List[ProposedPath]
+
 class ChatRequest(BaseModel):
     messages: List[Message]
     user_id: str
     mode: str = "probe"
+    paths_to_append: Optional[List[ProposedPath]] = None
 
 class UserProfile(BaseModel):
     passions: List[str] = []
@@ -54,13 +62,6 @@ class UserProfile(BaseModel):
 class ResumeRequest(BaseModel):
     user_id: str
     file_path: str
-
-class ProposedPath(BaseModel):
-    title: str
-    description: str
-
-class PathSuggestions(BaseModel):
-    paths: List[ProposedPath]
 
 # --- Helper: Save Chat Message ---
 async def save_message(user_id: str, role: str, content: str):
@@ -425,35 +426,15 @@ async def chat_endpoint(request: ChatRequest):
             new_paths = gen_data.get("paths", [])
             
             if new_paths:
-                # 3. Auto-Save to Database
-                # Fetch existing saved_paths
-                profile_res = supabase.table("profiles").select("saved_paths").eq("id", request.user_id).execute()
-                existing_paths = []
-                if profile_res.data:
-                    existing_paths = profile_res.data[0].get("saved_paths", []) or []
-                
-                # Append new paths with metadata
-                for p in new_paths:
-                    path_obj = {
-                        "id": str(int(datetime.now().timestamp() * 1000)),
-                        "title": p["title"],
-                        "description": p["description"],
-                        "created_at": datetime.now().isoformat()
-                    }
-                    existing_paths.append(path_obj)
-                    await asyncio.sleep(0.01) # Tiny delay to avoid timestamp collision
-                
-                # Update profiles table
-                supabase.table("profiles").update({
-                    "saved_paths": existing_paths,
-                    "updated_at": datetime.now().isoformat()
-                }).eq("id", request.user_id).execute()
-                
                 # Prepare System Note for conversational hand-off
                 titles_str = ", ".join([p["title"] for p in new_paths])
                 concepts_str = ", ".join([n.get("concept", "Unknown") for n in centroid_nodes])
-                advise_system_note = f"SYSTEM NOTE: You just analyzed the user's board (Prioritized nodes: {concepts_str}) and successfully saved the following career paths to their database: {titles_str}. Warmly tell the user what you generated, explain why it fits their overlapping passions, and invite their feedback."
-                print(f"✅ Saved {len(new_paths)} paths for {request.user_id}")
+                # UPDATED: Tell the assistant to explain the paths and mention they can be saved
+                advise_system_note = f"SYSTEM NOTE: You just analyzed the user's board (Prioritized nodes: {concepts_str}) and generated the following career paths: {titles_str}. Warmly tell the user what you generated, explain why it fits their overlapping passions. Mention that they can click 'Save Path' on any of the cards below if they want to keep them for later."
+                
+                # We will append the JSON to the end of the stream in generate_stream
+                request.paths_to_append = new_paths 
+                print(f"✨ Generated {len(new_paths)} paths for {request.user_id} (Manual save mode)")
 
         except Exception as e:
             print(f"❌ Error in Solver Agent logic: {e}")
@@ -532,6 +513,13 @@ async def chat_endpoint(request: ChatRequest):
                     full_response += text
                     yield text 
             
+            # --- NEW: APPEND PATHS JSON IF AVAILABLE ---
+            if hasattr(request, 'paths_to_append') and request.paths_to_append:
+                paths_json = json.dumps([p.model_dump() if hasattr(p, 'model_dump') else p for p in request.paths_to_append])
+                delimiter_block = f"\n\n===PATHS_JSON=== {paths_json} ===END_PATHS_JSON==="
+                full_response += delimiter_block
+                yield delimiter_block
+
             asyncio.create_task(save_message(request.user_id, "assistant", full_response))
 
         except Exception as e:
