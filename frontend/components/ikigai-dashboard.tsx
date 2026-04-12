@@ -134,6 +134,25 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
   }, [userId, supabase])
 
   // --- 3. THE DROP ZONE MATH (RADIAL INTERSECTION & TRASH COLLISION) ---
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!draggingNode || !boardRef.current) return
+    
+    const rect = boardRef.current.getBoundingClientRect()
+    setLocalPositions(prev => ({
+      ...prev,
+      [draggingNode]: { x: (e.clientX - rect.left) / zoom, y: (e.clientY - rect.top) / zoom }
+    }))
+
+    if (trashRef.current) {
+      const trashRect = trashRef.current.getBoundingClientRect()
+      const isHovering = (
+        e.clientX >= trashRect.left && e.clientX <= trashRect.right &&
+        e.clientY >= trashRect.top && e.clientY <= trashRect.bottom
+      )
+      setIsHoveringTrash(isHovering)
+    }
+  }
+
   const handlePointerUp = async (e: React.PointerEvent) => {
     if (!draggingNode || !boardRef.current) return
 
@@ -279,7 +298,7 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
     }
   }
 
-  const renderGems = (nodeList: IkigaiNode[], zoneKey: string, score: number, defaultCenter: {x: number, y: number}) => {
+  const renderGems = (nodeList: IkigaiNode[], zoneKey: string, score: number, defaultCenter: {x: number, y: number}, onlyRenderDropped = false) => {
     if (nodeList.length === 0) return null
     const inverseScale = 1 / zoom
     
@@ -287,8 +306,8 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
     const droppedNodes = nodeList.filter(n => localPositions[n.concept])
     const unDroppedNodes = nodeList.filter(n => !localPositions[n.concept])
     
-    const visibleUnDropped = unDroppedNodes.slice(0, Math.max(0, maxVisible - droppedNodes.length))
-    const overflowCount = unDroppedNodes.length - visibleUnDropped.length
+    const visibleUnDropped = onlyRenderDropped ? [] : unDroppedNodes.slice(0, Math.max(0, maxVisible - droppedNodes.length))
+    const overflowCount = onlyRenderDropped ? 0 : unDroppedNodes.length - visibleUnDropped.length
     const nodesToRender = [...droppedNodes, ...visibleUnDropped]
 
     return (
@@ -360,32 +379,17 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
   }
 
   return (
-    <div className="flex h-full w-full bg-slate-900 overflow-hidden relative selection:bg-transparent">
+    <div 
+      className="flex h-full w-full bg-slate-900 overflow-hidden relative selection:bg-transparent"
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={handlePointerUp}
+    >
       
       {/* --- THE DIAGRAM VIEWPORT --- */}
       <div 
         ref={containerRef} 
         className="flex-1 relative overflow-hidden bg-[#f4f5f7]"
-        onPointerMove={(e) => {
-          if (!draggingNode || !boardRef.current) return
-          
-          const rect = boardRef.current.getBoundingClientRect()
-          setLocalPositions(prev => ({
-            ...prev,
-            [draggingNode]: { x: (e.clientX - rect.left) / zoom, y: (e.clientY - rect.top) / zoom }
-          }))
-
-          if (trashRef.current) {
-            const trashRect = trashRef.current.getBoundingClientRect()
-            const isHovering = (
-              e.clientX >= trashRect.left && e.clientX <= trashRect.right &&
-              e.clientY >= trashRect.top && e.clientY <= trashRect.bottom
-            )
-            setIsHoveringTrash(isHovering)
-          }
-        }}
-        onPointerUp={handlePointerUp}
-        onPointerLeave={handlePointerUp}
       >
         {isLoading && <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/50 backdrop-blur-sm">Loading...</div>}
 
@@ -427,6 +431,9 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
           {renderGems(zones.paidOnly, "paidOnly", 1, {x: 400, y: 650})}
           {renderGems(zones.goodOnly, "goodOnly", 1, {x: 150, y: 400})}
           {renderGems(zones.needsOnly, "needsOnly", 1, {x: 650, y: 400})}
+
+          {/* Render Exploring Gems only if they have a position (i.e. are being dragged) */}
+          {renderGems(zones.exploring, "exploring", 0, {x: 400, y: 400}, true)}
         </div>
 
         {/* --- UI CONTROLS (D-PAD, ZOOM, ADD & TRASH) --- */}
@@ -486,13 +493,41 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
           </div>
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
             {(sidebarZone ? zones[sidebarZone] : zones.exploring).map(node => (
-              <div key={node.concept} className="bg-white border border-slate-200 p-3 rounded-lg shadow-sm">
+              <div 
+                key={node.concept} 
+                className="bg-white border border-slate-200 p-3 rounded-lg shadow-sm cursor-grab active:cursor-grabbing hover:border-indigo-300 transition-colors"
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  setDraggingNode(node.concept);
+                  setDragStartPos(null);
+                  
+                  if (boardRef.current) {
+                    const rect = boardRef.current.getBoundingClientRect()
+                    const x = (e.clientX - rect.left) / zoom
+                    const y = (e.clientY - rect.top) / zoom
+                    setLocalPositions(prev => ({ ...prev, [node.concept]: { x, y } }))
+                  }
+                }}
+              >
                 <div className="font-bold text-slate-700 text-sm">{node.concept}</div>
-                <div className="flex gap-1 mt-2 flex-wrap">
-                  {node.ik && <span className="text-[9px] px-1 bg-pink-100 text-pink-700 rounded">Love</span>}
-                  {node.i && <span className="text-[9px] px-1 bg-blue-100 text-blue-700 rounded">Good</span>}
-                  {node.g && <span className="text-[9px] px-1 bg-yellow-100 text-yellow-700 rounded">Needs</span>}
-                  {node.ai && <span className="text-[9px] px-1 bg-emerald-100 text-emerald-700 rounded">Paid</span>}
+                <div className="flex justify-between items-center mt-2">
+                  <div className="flex gap-1 flex-wrap">
+                    {node.ik && <span className="text-[9px] px-1 bg-pink-100 text-pink-700 rounded">Love</span>}
+                    {node.i && <span className="text-[9px] px-1 bg-blue-100 text-blue-700 rounded">Good</span>}
+                    {node.g && <span className="text-[9px] px-1 bg-yellow-100 text-yellow-700 rounded">Needs</span>}
+                    {node.ai && <span className="text-[9px] px-1 bg-emerald-100 text-emerald-700 rounded">Paid</span>}
+                  </div>
+                  {onAskCoach && (
+                    <button
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        onAskCoach(node);
+                      }}
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white text-[9px] px-2 py-0.5 rounded transition-colors font-bold"
+                    >
+                      Ask Coach
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
