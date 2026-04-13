@@ -35,6 +35,8 @@ supabase: Client = create_client(url, key)
 
 openai_client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
 
+from scout import search_market_data
+
 # --- Models ---
 class Message(BaseModel):
     role: str
@@ -43,6 +45,8 @@ class Message(BaseModel):
 class ProposedPath(BaseModel):
     title: str
     description: str
+    real_world_titles: List[str] # Real-world job titles found in market data
+    estimated_salary: str      # Estimated salary range from market data
 
 class PathSuggestions(BaseModel):
     paths: List[ProposedPath]
@@ -401,18 +405,30 @@ async def chat_endpoint(request: ChatRequest):
             max_score = max([s for n, s in scored_nodes]) if scored_nodes else 0
             centroid_nodes = [n for n, s in scored_nodes if s == max_score]
         
-        # 2. Structured Generation
+        # 2. Agentic Pre-Search (The Scout)
+        concepts_list = [n.get("concept", "Unknown") for n in centroid_nodes]
+        search_query = f"Careers and average salaries combining {', '.join(concepts_list)}"
+        print(f"📡 Scout Agent searching for: '{search_query}'...")
+        
+        market_context = await search_market_data(search_query)
+
+        # 3. Structured Generation
         gen_prompt = f"""
         You are a world-class career strategist. You specialize in synthesizing various passions, skills, and market needs into cohesive career blueprints.
         
+        MARKET CONTEXT (REAL-WORLD DATA):
+        {market_context}
+
         The user has a set of Ikigai nodes. I have prioritized the following "centroid" nodes that show the most promise:
         {json.dumps(centroid_nodes, indent=2)}
         
         INSTRUCTIONS:
         1. Analyze these nodes and their overlapping pillars.
-        2. Generate 1 or 2 highly synthesized career paths (ProposedPath).
-        3. Each path must have a 'title' (short, punchy) and a 'description' (detailed strategy/blueprint).
-        4. Return ONLY a JSON object with a key 'paths' containing an array of these objects.
+        2. Use the provided Market Context to ground your suggestions in reality. 
+        3. You MUST populate the `real_world_titles` and `estimated_salary` fields using only the facts found in this market data.
+        4. Generate 1 or 2 highly synthesized career paths (ProposedPath).
+        5. Each path must have a 'title' (short, punchy), a 'description' (detailed strategy/blueprint), 'real_world_titles' (list), and 'estimated_salary' (string).
+        6. Return ONLY a JSON object with a key 'paths' containing an array of these objects.
         """
         
         try:
@@ -428,13 +444,13 @@ async def chat_endpoint(request: ChatRequest):
             if new_paths:
                 # Prepare System Note for conversational hand-off
                 titles_str = ", ".join([p["title"] for p in new_paths])
-                concepts_str = ", ".join([n.get("concept", "Unknown") for n in centroid_nodes])
+                concepts_str = ", ".join(concepts_list)
                 # UPDATED: Tell the assistant to explain the paths and mention they can be saved
-                advise_system_note = f"SYSTEM NOTE: You just analyzed the user's board (Prioritized nodes: {concepts_str}) and generated the following career paths: {titles_str}. Warmly tell the user what you generated, explain why it fits their overlapping passions. Mention that they can click 'Save Path' on any of the cards below if they want to keep them for later."
+                advise_system_note = f"SYSTEM NOTE: You just analyzed the user's board (Prioritized nodes: {concepts_str}) and generated the following career paths grounded in real market data: {titles_str}. Warmly tell the user what you generated, explain why it fits their overlapping passions. Mention the real-world titles and salary data you found. Mention that they can click 'Save Path' on any of the cards below if they want to keep them for later."
                 
                 # We will append the JSON to the end of the stream in generate_stream
                 request.paths_to_append = new_paths 
-                print(f"✨ Generated {len(new_paths)} paths for {request.user_id} (Manual save mode)")
+                print(f"✨ Generated {len(new_paths)} paths for {request.user_id} (Manual save mode) with real-world data.")
 
         except Exception as e:
             print(f"❌ Error in Solver Agent logic: {e}")
