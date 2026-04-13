@@ -10,6 +10,13 @@ type Message = {
   content: string
 }
 
+type ProposedPath = {
+  title: string
+  description: string
+  real_world_titles?: string[]
+  estimated_salary?: string
+}
+
 type AIMode = 'absorb' | 'probe' | 'advise'
 
 export default function ChatInterface({ 
@@ -58,7 +65,7 @@ export default function ChatInterface({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const handleSavePath = async (title: string, description: string, pathIndex: number, messageId: string) => {
+  const handleSavePath = async (path: ProposedPath, pathIndex: number, messageId: string) => {
     const uniqueId = `${messageId}-${pathIndex}`
     if (savedPathIds.includes(uniqueId)) return
 
@@ -77,8 +84,10 @@ export default function ChatInterface({
       // 2. Append new path
       const newPath = {
         id: Date.now().toString(),
-        title,
-        description,
+        title: path.title,
+        description: path.description,
+        real_world_titles: path.real_world_titles,
+        estimated_salary: path.estimated_salary,
         created_at: new Date().toISOString()
       }
 
@@ -218,11 +227,14 @@ export default function ChatInterface({
           // Parse paths if they exist
           const pathsRegex = /===PATHS_JSON=== (.*?) ===END_PATHS_JSON===/
           const match = m.content.match(pathsRegex)
-          let cleanContent = m.content
-          let parsedPaths: any[] = []
+          
+          // NEW: Create a sanitized display string by splitting at the delimiter
+          // This prevents raw JSON from "leaking" into the UI while streaming
+          const displayContent = m.content.split('===PATHS_JSON===')[0].trim()
+          
+          let parsedPaths: ProposedPath[] = []
 
           if (match) {
-            cleanContent = m.content.replace(pathsRegex, '').trim()
             try {
               parsedPaths = JSON.parse(match[1])
             } catch (e) {
@@ -240,7 +252,7 @@ export default function ChatInterface({
                       : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none'
                   }`}
                 >
-                  <div className="whitespace-pre-wrap">{cleanContent}</div>
+                  <div className="whitespace-pre-wrap">{displayContent}</div>
                 </div>
               </div>
 
@@ -256,11 +268,29 @@ export default function ChatInterface({
                       >
                         <div className="flex justify-between items-start gap-4">
                           <div className="flex-1">
-                            <h4 className="text-indigo-900 font-bold text-sm mb-1">{path.title}</h4>
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <h4 className="text-indigo-900 font-bold text-sm">{path.title}</h4>
+                              {path.estimated_salary && (
+                                <span className="bg-green-100 text-green-800 rounded-full px-2 py-0.5 text-[10px] font-bold">
+                                  {path.estimated_salary}
+                                </span>
+                              )}
+                            </div>
+
+                            {path.real_world_titles && path.real_world_titles.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mb-2">
+                                {path.real_world_titles.map((title, tIdx) => (
+                                  <span key={tIdx} className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded text-[10px]">
+                                    {title}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
                             <p className="text-gray-600 text-xs leading-relaxed">{path.description}</p>
                           </div>
                           <button
-                            onClick={() => handleSavePath(path.title, path.description, idx, m.id)}
+                            onClick={() => handleSavePath(path, idx, m.id)}
                             disabled={isSaved}
                             className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                               isSaved 

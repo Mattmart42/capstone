@@ -26,10 +26,12 @@ type IkigaiNode = {
 ### 2. Saved Paths (`saved_paths` column)
 ```typescript
 type SavedPath = {
-  id: string;          // Timestamp string
-  title: string;       // AI-generated or user-created
-  description: string; // Detailed strategy/blueprint
-  created_at: string;  // ISO Date string
+  id: string;              // Timestamp string
+  title: string;           // AI-generated or user-created
+  description: string;     // Detailed strategy/blueprint
+  created_at: string;      // ISO Date string
+  real_world_titles?: string[]; // Scout Agent: real job titles
+  estimated_salary?: string;    // Scout Agent: market salary data
 }
 ```
 

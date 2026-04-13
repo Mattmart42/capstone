@@ -9,6 +9,8 @@ type SavedPath = {
   title: string
   description: string
   created_at: string
+  real_world_titles?: string[]
+  estimated_salary?: string
 }
 
 export default function SavedPaths({ userId }: { userId: string }) {
@@ -18,7 +20,13 @@ export default function SavedPaths({ userId }: { userId: string }) {
   // Modal State
   const [isAdding, setIsAdding] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [newPath, setNewPath] = useState({ title: '', description: '' })
+  const [newPath, setNewPath] = useState({ 
+    title: '', 
+    description: '', 
+    estimated_salary: '', 
+    real_world_titles: [] as string[] 
+  })
+  const [tempTitle, setTempTitle] = useState('')
 
   const supabase = createClient()
 
@@ -49,6 +57,8 @@ export default function SavedPaths({ userId }: { userId: string }) {
       id: Date.now().toString(),
       title: newPath.title.trim(),
       description: newPath.description.trim(),
+      estimated_salary: newPath.estimated_salary.trim() || undefined,
+      real_world_titles: newPath.real_world_titles.length > 0 ? newPath.real_world_titles : undefined,
       created_at: new Date().toISOString()
     }
 
@@ -69,7 +79,8 @@ export default function SavedPaths({ userId }: { userId: string }) {
       .update({ saved_paths: updatedPaths })
       .eq('id', userId)
 
-    setNewPath({ title: '', description: '' })
+    setNewPath({ title: '', description: '', estimated_salary: '', real_world_titles: [] })
+    setTempTitle('')
     setIsAdding(false)
     setIsSaving(false)
   }
@@ -136,7 +147,27 @@ export default function SavedPaths({ userId }: { userId: string }) {
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-fuchsia-500 opacity-0 group-hover:opacity-100 transition-opacity" />
               
               <div className="flex justify-between items-start mb-4">
-                <h3 className="text-lg font-bold text-slate-800 leading-tight">{path.title}</h3>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <h3 className="text-lg font-bold text-slate-800 leading-tight">{path.title}</h3>
+                    {path.estimated_salary && (
+                      <span className="bg-green-100 text-green-800 rounded-full px-2 py-0.5 text-[10px] font-bold shadow-sm">
+                        {path.estimated_salary}
+                      </span>
+                    )}
+                  </div>
+
+                  {path.real_world_titles && path.real_world_titles.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {path.real_world_titles.map((title, idx) => (
+                        <span key={idx} className="bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded text-[10px] font-medium border border-slate-100">
+                          {title}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <button 
                   onClick={() => handleDelete(path.id)}
                   className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-md transition-colors"
@@ -181,6 +212,64 @@ export default function SavedPaths({ userId }: { userId: string }) {
                   onChange={(e) => setNewPath({ ...newPath, title: e.target.value })}
                 />
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Salary Range (Optional)</label>
+                  <input 
+                    type="text"
+                    placeholder="e.g. $120k - $150k"
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 placeholder-slate-400 text-sm"
+                    value={newPath.estimated_salary}
+                    onChange={(e) => setNewPath({ ...newPath, estimated_salary: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Real-World Titles</label>
+                  <div className="flex gap-2">
+                    <input 
+                      type="text"
+                      placeholder="Add title..."
+                      className="flex-1 px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 placeholder-slate-400 text-sm"
+                      value={tempTitle}
+                      onChange={(e) => setTempTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          if (tempTitle.trim()) {
+                            setNewPath({ ...newPath, real_world_titles: [...newPath.real_world_titles, tempTitle.trim()] })
+                            setTempTitle('')
+                          }
+                        }
+                      }}
+                    />
+                    <button 
+                      onClick={() => {
+                        if (tempTitle.trim()) {
+                          setNewPath({ ...newPath, real_world_titles: [...newPath.real_world_titles, tempTitle.trim()] })
+                          setTempTitle('')
+                        }
+                      }}
+                      className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-colors"
+                    >
+                      <Plus size={20} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {newPath.real_world_titles.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {newPath.real_world_titles.map((t, i) => (
+                    <span key={i} className="bg-indigo-50 text-indigo-700 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 border border-indigo-100">
+                      {t}
+                      <button onClick={() => setNewPath({ ...newPath, real_world_titles: newPath.real_world_titles.filter((_, idx) => idx !== i) })}>
+                        <X size={12} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Description & Strategy</label>

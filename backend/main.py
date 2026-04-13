@@ -412,7 +412,7 @@ async def chat_endpoint(request: ChatRequest):
         
         market_context = await search_market_data(search_query)
 
-        # 3. Structured Generation
+        # 3. Call 1: THE THINKER (Structured Generation)
         gen_prompt = f"""
         You are a world-class career strategist. You specialize in synthesizing various passions, skills, and market needs into cohesive career blueprints.
         
@@ -442,15 +442,27 @@ async def chat_endpoint(request: ChatRequest):
             new_paths = gen_data.get("paths", [])
             
             if new_paths:
-                # Prepare System Note for conversational hand-off
-                titles_str = ", ".join([p["title"] for p in new_paths])
+                # Store the generated JSON string for injection into Call 2
+                generated_paths_json = json.dumps(new_paths)
                 concepts_str = ", ".join(concepts_list)
-                # UPDATED: Tell the assistant to explain the paths and mention they can be saved
-                advise_system_note = f"SYSTEM NOTE: You just analyzed the user's board (Prioritized nodes: {concepts_str}) and generated the following career paths grounded in real market data: {titles_str}. Warmly tell the user what you generated, explain why it fits their overlapping passions. Mention the real-world titles and salary data you found. Mention that they can click 'Save Path' on any of the cards below if they want to keep them for later."
                 
-                # We will append the JSON to the end of the stream in generate_stream
-                request.paths_to_append = new_paths 
-                print(f"✨ Generated {len(new_paths)} paths for {request.user_id} (Manual save mode) with real-world data.")
+                # 4. Call 2: THE TALKER (Streaming Response setup)
+                # We inject the JSON from Call 1 directly into the second call's instructions
+                advise_system_note = f"""
+                SYSTEM NOTE: You just generated the following career paths for the user based on their board: {generated_paths_json}.
+                You MUST ONLY discuss these exact paths. Do not invent new ones. 
+                Warmly explain why these specific paths fit their profile and their overlapping passions (Prioritized nodes: {concepts_str}). 
+                Mention the real-world titles and salary data you found.
+                Mention that they can click 'Save Path' on any of the cards below if they want to keep them for later.
+                
+                CRITICAL: At the very end of your response, you MUST append this exact string block without altering the JSON:
+                ===PATHS_JSON=== {generated_paths_json} ===END_PATHS_JSON===
+                """
+                
+                # IMPORTANT: We do NOT append to paths_to_append here because we handle it in the talker prompt
+                # But to keep things safe for the existing generate_stream logic if it expects it:
+                # request.paths_to_append = new_paths 
+                print(f"✨ Two-Call Pattern: Call 1 generated {len(new_paths)} paths. Call 2 (The Talker) will now stream.")
 
         except Exception as e:
             print(f"❌ Error in Solver Agent logic: {e}")
@@ -529,13 +541,6 @@ async def chat_endpoint(request: ChatRequest):
                     full_response += text
                     yield text 
             
-            # --- NEW: APPEND PATHS JSON IF AVAILABLE ---
-            if hasattr(request, 'paths_to_append') and request.paths_to_append:
-                paths_json = json.dumps([p.model_dump() if hasattr(p, 'model_dump') else p for p in request.paths_to_append])
-                delimiter_block = f"\n\n===PATHS_JSON=== {paths_json} ===END_PATHS_JSON==="
-                full_response += delimiter_block
-                yield delimiter_block
-
             asyncio.create_task(save_message(request.user_id, "assistant", full_response))
 
         except Exception as e:
