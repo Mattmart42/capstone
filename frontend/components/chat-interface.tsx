@@ -17,7 +17,7 @@ type ProposedPath = {
   estimated_salary?: string
 }
 
-type AIMode = 'absorb' | 'probe' | 'advise'
+type AIMode = 'absorb' | 'probe' | 'advise' | 'onboard'
 
 export default function ChatInterface({ 
   userId, 
@@ -38,27 +38,52 @@ export default function ChatInterface({
   const supabase = createClient()
 
   useEffect(() => {
-    async function fetchHistory() {
+    async function fetchInitialData() {
       if (!userId) return
       
       try {
-        const url = `http://localhost:8000/chat/history/${userId}`
-        const response = await fetch(url)
-        if (response.ok) {
-          const data = await response.json()
-          setMessages(data.messages)
-        } else {
-          console.error(`Backend returned ${response.status} for history fetch`)
+        // 1. Fetch Chat History
+        const historyUrl = `http://localhost:8000/chat/history/${userId}`
+        const historyResponse = await fetch(historyUrl)
+        let historyMessages: Message[] = []
+        if (historyResponse.ok) {
+          const data = await historyResponse.json()
+          historyMessages = data.messages
+          setMessages(historyMessages)
+        }
+
+        // 2. Fetch Profile for Ikigai Nodes
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('ikigai_nodes')
+          .eq('id', userId)
+          .single()
+        
+        const nodes = profile?.ikigai_nodes || []
+
+        // 3. Onboarding Logic
+        if (nodes.length === 0) {
+          setMode('onboard')
+          
+          // Auto-trigger greeting if no messages exist
+          if (historyMessages.length === 0) {
+            const greeting: Message = {
+              id: 'onboarding-greeting',
+              role: 'assistant',
+              content: "Welcome to IkigAI. Before we map your future, let's figure out who you are. I have a few quick questions for you. First, what are you here for — searching for a job, new hobbies, or exploring new options?"
+            }
+            setMessages([greeting])
+          }
         }
       } catch (error) {
-        console.error("Failed to fetch chat history. Ensure the Python backend is running at http://localhost:8000. Error:", error)
+        console.error("Failed to fetch initial data:", error)
       } finally {
         setIsFetchingHistory(false)
       }
     }
 
-    fetchHistory()
-  }, [userId])
+    fetchInitialData()
+  }, [userId, supabase])
 
   // Auto-scroll
   useEffect(() => {
@@ -360,6 +385,15 @@ export default function ChatInterface({
           <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider mr-2">Goal:</span>
           
           <button 
+            onClick={() => setMode('onboard')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+              mode === 'onboard' ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+            }`}
+          >
+            Assess
+          </button>
+
+          <button 
             onClick={() => setMode('absorb')}
             className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
               mode === 'absorb' ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
@@ -394,6 +428,7 @@ export default function ChatInterface({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={
+              mode === 'onboard' ? "Answer the assessment..." :
               mode === 'absorb' ? "Hear my thoughts..." :
               mode === 'probe' ? "Ask me questions..." :
               "Give me advice..."
