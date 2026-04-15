@@ -48,6 +48,14 @@ class ProposedPath(BaseModel):
     real_world_titles: List[str] # Real-world job titles found in market data
     estimated_salary: str      # Estimated salary range from market data
 
+class SavedPath(BaseModel):
+    id: str
+    title: str
+    description: str
+    real_world_titles: Optional[List[str]] = []
+    estimated_salary: Optional[str] = None
+    created_at: str
+
 class PathSuggestions(BaseModel):
     paths: List[ProposedPath]
 
@@ -56,6 +64,7 @@ class ChatRequest(BaseModel):
     user_id: str
     mode: str = "probe"
     paths_to_append: Optional[List[ProposedPath]] = None
+    saved_paths: List[dict] = []
 
 class UserProfile(BaseModel):
     passions: List[str] = []
@@ -324,10 +333,13 @@ async def chat_endpoint(request: ChatRequest):
     # --- NEW: 4. FETCH LONG-TERM MEMORY ---
     profile_context = "You do not know anything about this user yet."
     nodes = []
+    saved_paths_json = json.dumps(request.saved_paths)
+    
     try:
         profile_response = supabase.table("profiles").select("*").eq("id", request.user_id).execute()
         if profile_response.data:
-            nodes = profile_response.data[0].get('ikigai_nodes', []) or []
+            profile_data = profile_response.data[0]
+            nodes = profile_data.get('ikigai_nodes', []) or []
 
             formatted_nodes = "\n".join([
                 f"- {n.get('concept', 'Unknown')}: Love(ik):{n.get('ik', False)}, Good At(i):{n.get('i', False)}, World Needs(g):{n.get('g', False)}, Paid For(ai):{n.get('ai', False)}" 
@@ -335,6 +347,13 @@ async def chat_endpoint(request: ChatRequest):
             ])
 
             profile_context = f"Here is the user's current Ikigai map:\n{formatted_nodes or 'No concepts mapped yet.'}"
+            
+            # If saved_paths weren't provided in the request, fallback to DB
+            if not request.saved_paths:
+                db_paths = profile_data.get('saved_paths', []) or []
+                saved_paths_json = json.dumps(db_paths)
+
+            profile_context += f"\n\nCURRENT SAVED PATHS: {saved_paths_json}. The user has saved these specific career paths to their profile (some AI-generated, some manually created). If the user asks about their paths, references a saved path, or asks for next steps, you MUST use this data to provide accurate, grounded advice. Do not hallucinate paths that are not in this list."
     except Exception as e:
         print(f"Error fetching profile context: {e}")
 

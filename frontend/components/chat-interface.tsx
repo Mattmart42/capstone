@@ -33,6 +33,7 @@ export default function ChatInterface({
   const [isLoading, setIsLoading] = useState(false)
   const [isFetchingHistory, setIsFetchingHistory] = useState(true)
   const [mode, setMode] = useState<AIMode>('probe') 
+  const [savedPaths, setSavedPaths] = useState<any[]>([])
   const [savedPathIds, setSavedPathIds] = useState<string[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
@@ -52,14 +53,16 @@ export default function ChatInterface({
           setMessages(historyMessages)
         }
 
-        // 2. Fetch Profile for Ikigai Nodes
+        // 2. Fetch Profile for Ikigai Nodes and Saved Paths
         const { data: profile } = await supabase
           .from('profiles')
-          .select('ikigai_nodes')
+          .select('ikigai_nodes, saved_paths')
           .eq('id', userId)
           .single()
         
         const nodes = profile?.ikigai_nodes || []
+        const paths = profile?.saved_paths || []
+        setSavedPaths(paths)
 
         // 3. Onboarding Logic
         if (nodes.length === 0) {
@@ -116,14 +119,17 @@ export default function ChatInterface({
         created_at: new Date().toISOString()
       }
 
+      const updatedPaths = [...currentPaths, newPath]
+
       // 3. Update table
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ saved_paths: [...currentPaths, newPath] })
+        .update({ saved_paths: updatedPaths })
         .eq('id', userId)
 
       if (updateError) throw updateError
 
+      setSavedPaths(updatedPaths)
       setSavedPathIds(prev => [...prev, uniqueId])
     } catch (error) {
       console.error("Error saving path:", error)
@@ -151,13 +157,14 @@ export default function ChatInterface({
         content: ''
       }])
 
-      // UPDATED: Now we pass the 'mode' to the backend
+      // UPDATED: Now we pass the 'mode' and 'saved_paths' to the backend
       const response = await fetch('http://localhost:8000/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: userId,
-          mode: mode, // <--- INJECTING THE SELECTED MODE HERE
+          mode: mode,
+          saved_paths: savedPaths, // <--- INJECTING SAVED PATHS HERE
           messages: [...messages, userMessage].map(m => ({
             role: m.role,
             content: m.content
