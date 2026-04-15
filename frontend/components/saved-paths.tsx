@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/utils/supabase/client'
-import { Plus, X, Map, ArrowRight, Trash2 } from 'lucide-react'
+import { Plus, X, Map, ArrowRight, Trash2, Pencil, Check, CircleX } from 'lucide-react'
 
 type SavedPath = {
   id: string
@@ -27,6 +27,11 @@ export default function SavedPaths({ userId }: { userId: string }) {
     real_world_titles: [] as string[] 
   })
   const [tempTitle, setTempTitle] = useState('')
+
+  // Edit State
+  const [editingPathId, setEditingPathId] = useState<string | null>(null)
+  const [editFormData, setEditFormData] = useState<SavedPath | null>(null)
+  const [editTempTitle, setEditTempTitle] = useState('')
 
   const supabase = createClient()
 
@@ -62,7 +67,7 @@ export default function SavedPaths({ userId }: { userId: string }) {
       created_at: new Date().toISOString()
     }
 
-    setPaths(updatedNodes => [...updatedNodes, pathToAdd]) // Optimistic update
+    setPaths(prev => [...prev, pathToAdd]) // Optimistic update
 
     // Fetch the latest paths from the database to prevent race conditions
     const { data } = await supabase
@@ -82,6 +87,32 @@ export default function SavedPaths({ userId }: { userId: string }) {
     setNewPath({ title: '', description: '', estimated_salary: '', real_world_titles: [] })
     setTempTitle('')
     setIsAdding(false)
+    setIsSaving(false)
+  }
+
+  // Handle Update Path
+  const handleUpdatePath = async () => {
+    if (!editFormData || !editingPathId) return
+    setIsSaving(true)
+
+    const updatedPaths = paths.map(p => 
+      p.id === editingPathId ? { ...editFormData, title: editFormData.title.trim() } : p
+    )
+
+    setPaths(updatedPaths) // Optimistic update
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ saved_paths: updatedPaths })
+      .eq('id', userId)
+
+    if (error) {
+      console.error("Error updating path:", error)
+      alert("Failed to update path.")
+    }
+
+    setEditingPathId(null)
+    setEditFormData(null)
     setIsSaving(false)
   }
 
@@ -142,49 +173,157 @@ export default function SavedPaths({ userId }: { userId: string }) {
       ) : (
         /* The Cards */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {paths.map(path => (
-            <div key={path.id} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow group flex flex-col relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-fuchsia-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-              
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <h3 className="text-lg font-bold text-slate-800 leading-tight">{path.title}</h3>
-                    {path.estimated_salary && (
-                      <span className="bg-green-100 text-green-800 rounded-full px-2 py-0.5 text-[10px] font-bold shadow-sm">
-                        {path.estimated_salary}
-                      </span>
-                    )}
-                  </div>
-
-                  {path.real_world_titles && path.real_world_titles.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      {path.real_world_titles.map((title, idx) => (
-                        <span key={idx} className="bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded text-[10px] font-medium border border-slate-100">
-                          {title}
-                        </span>
-                      ))}
+          {paths.map(path => {
+            const isEditing = editingPathId === path.id
+            
+            return (
+              <div key={path.id} className={`bg-white border ${isEditing ? 'border-indigo-400 ring-2 ring-indigo-50 shadow-lg' : 'border-slate-200'} rounded-2xl p-6 shadow-sm hover:shadow-md transition-all group flex flex-col relative overflow-hidden`}>
+                <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-fuchsia-500 ${isEditing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`} />
+                
+                {isEditing && editFormData ? (
+                  /* Edit Form */
+                  <div className="flex flex-col h-full space-y-4">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">Editing Path</span>
+                      <button onClick={() => setEditingPathId(null)} className="text-slate-400 hover:text-slate-600">
+                        <CircleX size={18} />
+                      </button>
                     </div>
-                  )}
-                </div>
 
-                <button 
-                  onClick={() => handleDelete(path.id)}
-                  className="text-slate-300 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-md transition-colors"
-                >
-                  <Trash2 size={16} />
-                </button>
+                    <div>
+                      <input 
+                        className="w-full px-3 py-2 text-sm font-bold border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        value={editFormData.title}
+                        onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })}
+                        placeholder="Path Title"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <input 
+                        className="w-full px-3 py-2 text-[11px] border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        value={editFormData.estimated_salary || ''}
+                        onChange={(e) => setEditFormData({ ...editFormData, estimated_salary: e.target.value })}
+                        placeholder="Salary (e.g. $100k)"
+                      />
+                      <div className="flex gap-1">
+                        <input 
+                          className="flex-1 px-3 py-2 text-[11px] border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                          value={editTempTitle}
+                          onChange={(e) => setEditTempTitle(e.target.value)}
+                          placeholder="Add Title..."
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              if (editTempTitle.trim()) {
+                                setEditFormData({ 
+                                  ...editFormData, 
+                                  real_world_titles: [...(editFormData.real_world_titles || []), editTempTitle.trim()] 
+                                })
+                                setEditTempTitle('')
+                              }
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {editFormData.real_world_titles && editFormData.real_world_titles.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {editFormData.real_world_titles.map((t, i) => (
+                          <span key={i} className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[9px] font-bold flex items-center gap-1">
+                            {t}
+                            <button onClick={() => setEditFormData({ ...editFormData, real_world_titles: editFormData.real_world_titles?.filter((_, idx) => idx !== i) })}>
+                              <X size={10} />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <textarea 
+                      className="w-full flex-1 px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none leading-relaxed"
+                      rows={4}
+                      value={editFormData.description}
+                      onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                      placeholder="Path Description"
+                    />
+
+                    <div className="flex gap-2 pt-2">
+                      <button 
+                        onClick={handleUpdatePath}
+                        disabled={isSaving || !editFormData.title.trim()}
+                        className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <Check size={14} /> {isSaving ? 'Saving...' : 'Save Changes'}
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setEditingPathId(null)
+                          setEditFormData(null)
+                        }}
+                        className="px-3 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  /* Static View */
+                  <>
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <h3 className="text-lg font-bold text-slate-800 leading-tight">{path.title}</h3>
+                          {path.estimated_salary && (
+                            <span className="bg-green-100 text-green-800 rounded-full px-2 py-0.5 text-[10px] font-bold shadow-sm">
+                              {path.estimated_salary}
+                            </span>
+                          )}
+                        </div>
+
+                        {path.real_world_titles && path.real_world_titles.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-2">
+                            {path.real_world_titles.map((title, idx) => (
+                              <span key={idx} className="bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded text-[10px] font-medium border border-slate-100">
+                                {title}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => {
+                            setEditingPathId(path.id)
+                            setEditFormData({ ...path })
+                          }}
+                          className="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 p-1.5 rounded-md transition-colors"
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(path.id)}
+                          className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-md transition-colors"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <p className="text-slate-600 text-sm flex-1 whitespace-pre-wrap leading-relaxed">
+                      {path.description}
+                    </p>
+                    
+                    <div className="mt-6 pt-4 border-t border-slate-100 text-xs text-slate-400 font-medium">
+                      Mapped on {new Date(path.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric'})}
+                    </div>
+                  </>
+                )}
               </div>
-              
-              <p className="text-slate-600 text-sm flex-1 whitespace-pre-wrap leading-relaxed">
-                {path.description}
-              </p>
-              
-              <div className="mt-6 pt-4 border-t border-slate-100 text-xs text-slate-400 font-medium">
-                Mapped on {new Date(path.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric'})}
-              </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
