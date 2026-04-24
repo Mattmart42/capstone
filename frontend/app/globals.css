@@ -1,26 +1,82 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: white;
+  --foreground: black;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-overlock);
+  --font-serif: var(--font-averia-serif-libre);
+
+
+
+  --color-bg: #FFFFFF;
+  --color-surface-1: #FFBF00;
+  --color-surface-2: #FFD580;
+
+  --color-primary: #5ECE76;
+  --color-primary-hover: #1AAD39;
+  --color-primary-light: #B4F0C0;
+
+  --color-text: #141413;
+  --color-secondary-text: #8A8572;
+
+  --color-border: #8A8572;
+
+
+  /* Ikigai Specific Colors */
+  --color-ikigai-bg: #FFFFFF;
+  --color-ikigai-text: #818589;
+  --color-ikigai-subtext: #818589;
+
+  --color-ikigai-love: #FECDD3;
+  --color-ikigai-skill: #99F6E4;
+  --color-ikigai-need: #FDE68A;
+  --color-ikigai-paid: #C7D2FE;
+  
+  /* Neutral / Slate Palette */
+  --color-700: #141413;
+  --color-600: #32312B;
+  --color-500: #4F4D43;
+  --color-400: #8A8572;
+  --color-300: #C5BDA2;
+  --color-200: #E2D9BA;
+  --color-100: #FFF5D1;
+
+  /* Semantic Colors */
+  --color-success: #16A34A; /* Green 600 */
+  --color-success-light: #F0FDF4; /* Green 50 */
+  --color-danger: #DC2626; /* Red 600 */
+  --color-danger-light: #FEF2F2; /* Red 50 */
+  --color-warning: #D97706; /* Amber 600 */
+  --color-info: #2563EB; /* Blue 600 */
+
+  /* Surface Colors */
+  
+  --color-surface-alt: #5D3FD3;
+  
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #E2D9BA;
+    --foreground: #E7E5E4;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
 }
+
+/*
+text
+secondrary text
+selected text
+border
+
+*/

@@ -288,11 +288,11 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
 
   // --- 5. GEM RENDERER ---
   const getShape = (score: number) => {
-    const baseClasses = "w-5 h-5 fill-slate-800 transition-colors drop-shadow-md"
+    const baseClasses = "w-5 h-5 fill-neutral-800 transition-colors drop-shadow-md"
     const strokeProps = { stroke: "white", strokeWidth: "1.5", strokeLinejoin: "round" as const }
     switch (score) {
       case 4: return <svg viewBox="0 0 24 24" className={`${baseClasses} group-hover:fill-fuchsia-500`}><polygon points="7,2 17,2 22,7 22,17 17,22 7,22 2,17 2,7" {...strokeProps} /></svg> 
-      case 3: return <svg viewBox="0 0 24 24" className={`${baseClasses} group-hover:fill-indigo-500`}><polygon points="12,2 20.66,7 20.66,17 12,22 3.34,17 3.34,7" {...strokeProps} /></svg> 
+      case 3: return <svg viewBox="0 0 24 24" className={`${baseClasses} group-hover:fill-primary`}><polygon points="12,2 20.66,7 20.66,17 12,22 3.34,17 3.34,7" {...strokeProps} /></svg> 
       case 2: return <svg viewBox="0 0 24 24" className={`${baseClasses} group-hover:fill-sky-500`}><polygon points="12,2 22,12 12,22 2,12" {...strokeProps} /></svg> 
       case 1: default: return <svg viewBox="0 0 24 24" className={`${baseClasses} group-hover:fill-rose-500`}><polygon points="12,21 21.5,4.5 2.5,4.5" {...strokeProps} /></svg> 
     }
@@ -339,7 +339,7 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
                 
                 {/* Tooltip */}
                 <div className="absolute bottom-full mb-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto flex flex-col items-center">
-                  <div className="bg-slate-900 text-white text-[11px] font-bold px-2.5 py-1 rounded shadow-lg whitespace-nowrap flex items-center gap-2">
+                  <div className="bg-600 text-white text-[11px] font-bold px-2.5 py-1 rounded shadow-lg whitespace-nowrap flex items-center gap-2">
                     {node.concept}
                     {onAskCoach && (
                       <button
@@ -347,7 +347,7 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
                           e.stopPropagation();
                           onAskCoach(node);
                         }}
-                        className="ml-1 bg-indigo-600 hover:bg-indigo-500 text-[9px] px-1.5 py-0.5 rounded transition-colors"
+                        className="ml-1 bg-primary hover:bg-primary-hover text-[9px] px-1.5 py-0.5 rounded transition-colors"
                       >
                         Ask Coach
                       </button>
@@ -369,7 +369,7 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
             }}
             onClick={(e) => { e.stopPropagation(); setSidebarZone(zoneKey) }}
           >
-            <div className="w-5 h-5 flex items-center justify-center bg-white rounded-full border-2 border-slate-300 text-[10px] font-black text-slate-700 shadow-md">
+            <div className="w-5 h-5 flex items-center justify-center bg-primary rounded-full border-2 border-white text-[10px] font-black text-text shadow-md">
               +{overflowCount}
             </div>
           </div>
@@ -380,7 +380,7 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
 
   return (
     <div 
-      className="flex h-full w-full bg-slate-900 overflow-hidden relative selection:bg-transparent"
+      className="flex h-full w-full bg-100 overflow-hidden relative selection:bg-transparent rounded-2xl"
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerUp}
@@ -389,13 +389,13 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
       {/* --- THE DIAGRAM VIEWPORT --- */}
       <div 
         ref={containerRef} 
-        className="flex-1 relative overflow-hidden bg-[#f4f5f7]"
+        className="flex-1 relative overflow-hidden bg-100 rounded-2xl"
       >
-        {isLoading && <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/50 backdrop-blur-sm">Loading...</div>}
+        {isLoading && <div className="absolute inset-0 z-50 flex items-center justify-center bg-100/50 backdrop-blur-sm">Loading...</div>}
 
         <div 
           ref={boardRef}
-          className="absolute origin-top-left shadow-2xl bg-white rounded-full"
+          className="absolute origin-top-left bg-surface rounded-full"
           style={{ 
             width: BOARD_SIZE, height: BOARD_SIZE,
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
@@ -403,16 +403,16 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
           }}
         >
           {/* Background Quadrant Circles */}
-          <div className="absolute w-[460px] h-[460px] rounded-full bg-[#ff6666]/40 mix-blend-multiply pointer-events-none" style={{ left: CENTERS.ik.x - 220, top: CENTERS.ik.y - 240 }} />
-          <div className="absolute w-[460px] h-[460px] rounded-full bg-[#66ff78]/40 mix-blend-multiply pointer-events-none" style={{ left: CENTERS.i.x - 240, top: CENTERS.i.y - 220 }} />
-          <div className="absolute w-[460px] h-[460px] rounded-full bg-[#ffd166]/40 mix-blend-multiply pointer-events-none" style={{ left: CENTERS.g.x - 220, top: CENTERS.g.y - 220 }} />
-          <div className="absolute w-[460px] h-[460px] rounded-full bg-[#66dbff]/40 mix-blend-multiply pointer-events-none" style={{ left: CENTERS.ai.x - 220, top: CENTERS.ai.y - 220 }} />
+          <div className="absolute w-[460px] h-[460px] rounded-full bg-ikigai-love/80 mix-blend-multiply pointer-events-none" style={{ left: CENTERS.ik.x - 220, top: CENTERS.ik.y - 240 }} />
+          <div className="absolute w-[460px] h-[460px] rounded-full bg-ikigai-skill/80 mix-blend-multiply pointer-events-none" style={{ left: CENTERS.i.x - 240, top: CENTERS.i.y - 220 }} />
+          <div className="absolute w-[460px] h-[460px] rounded-full bg-ikigai-need/80 mix-blend-multiply pointer-events-none" style={{ left: CENTERS.g.x - 220, top: CENTERS.g.y - 220 }} />
+          <div className="absolute w-[460px] h-[460px] rounded-full bg-ikigai-paid/80 mix-blend-multiply pointer-events-none" style={{ left: CENTERS.ai.x - 220, top: CENTERS.ai.y - 220 }} />
 
           {/* Labels */}
-          <span className="absolute font-black tracking-widest text-[#ff6666]" style={{ left: CENTERS.ik.x, top: -30, transform: `translateX(-50%) scale(${1/zoom})` }}>LOVE</span>
-          <span className="absolute font-black tracking-widest text-[#66ff78] -rotate-90 origin-center" style={{ left: -50, top: CENTERS.i.y, transform: `translateY(-50%) scale(${1/zoom})` }}>GOOD AT</span>
-          <span className="absolute font-black tracking-widest text-[#ffd166] rotate-90 origin-center" style={{ right: -70, top: CENTERS.g.y, transform: `translateY(-50%) scale(${1/zoom})` }}>WORLD NEEDS</span>
-          <span className="absolute font-black tracking-widest text-[#66dbff]" style={{ left: CENTERS.ai.x, bottom: -30, transform: `translateX(-50%) scale(${1/zoom})` }}>PAID FOR</span>
+          <span className="absolute font-black tracking-widest text-400" style={{ left: CENTERS.ik.x, top: -30, transform: `translateX(-50%) scale(${1/zoom})` }}>LOVE</span>
+          <span className="absolute font-black tracking-widest text-400 -rotate-90 origin-center" style={{ left: -50, top: CENTERS.i.y, transform: `translateY(-50%) scale(${1/zoom})` }}>GOOD AT</span>
+          <span className="absolute font-black tracking-widest text-400 rotate-90 origin-center" style={{ right: -70, top: CENTERS.g.y, transform: `translateY(-50%) scale(${1/zoom})` }}>WORLD NEEDS</span>
+          <span className="absolute font-black tracking-widest text-400" style={{ left: CENTERS.ai.x, bottom: -30, transform: `translateX(-50%) scale(${1/zoom})` }}>PAID FOR</span>
 
           {/* Render All Zones */}
           {renderGems(zones.ikigai, "ikigai", 4, {x: 400, y: 400})}
@@ -439,36 +439,36 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
         {/* --- UI CONTROLS (D-PAD, ZOOM, ADD & TRASH) --- */}
         <div className="absolute bottom-6 left-6 flex items-end gap-4 z-40">
           
-          <div className="grid grid-cols-3 grid-rows-3 gap-1 bg-white/90 backdrop-blur p-2 rounded-xl shadow-lg border border-slate-200">
+          <div className="grid grid-cols-3 grid-rows-3 gap-1 bg-200/50 backdrop-blur p-2 rounded-xl">
             <div />
-            <button onClick={() => setPan(p => ({ ...p, y: p.y + 100 }))} className="p-2 bg-slate-100 hover:bg-slate-200 rounded text-slate-600"><ChevronUp size={18}/></button>
+            <button onClick={() => setPan(p => ({ ...p, y: p.y + 100 }))} className="p-2 bg-300 hover:bg-400 rounded text-600"><ChevronUp size={18}/></button>
             <div />
-            <button onClick={() => setPan(p => ({ ...p, x: p.x + 100 }))} className="p-2 bg-slate-100 hover:bg-slate-200 rounded text-slate-600"><ChevronLeft size={18}/></button>
+            <button onClick={() => setPan(p => ({ ...p, x: p.x + 100 }))} className="p-2 bg-300 hover:bg-400 rounded text-600"><ChevronLeft size={18}/></button>
             
-            <button onClick={resetCamera} className="p-2 bg-indigo-50 hover:bg-indigo-100 rounded text-indigo-600" title="Center & Fit Board"><Maximize size={18}/></button>
+            <button onClick={resetCamera} className="p-2 bg-primary-light hover:bg-primary-light rounded text-primary" title="Center & Fit Board"><Maximize size={18}/></button>
             
-            <button onClick={() => setPan(p => ({ ...p, x: p.x - 100 }))} className="p-2 bg-slate-100 hover:bg-slate-200 rounded text-slate-600"><ChevronRight size={18}/></button>
+            <button onClick={() => setPan(p => ({ ...p, x: p.x - 100 }))} className="p-2 bg-300 hover:bg-400 rounded text-600"><ChevronRight size={18}/></button>
             <div />
-            <button onClick={() => setPan(p => ({ ...p, y: p.y - 100 }))} className="p-2 bg-slate-100 hover:bg-slate-200 rounded text-slate-600"><ChevronDown size={18}/></button>
+            <button onClick={() => setPan(p => ({ ...p, y: p.y - 100 }))} className="p-2 bg-300 hover:bg-400 rounded text-600"><ChevronDown size={18}/></button>
             <div />
           </div>
 
-          <div className="flex flex-col gap-2 bg-white/90 backdrop-blur p-2 rounded-xl shadow-lg border border-slate-200">
-            <button onClick={() => setIsAddingNode(true)} className="p-3 bg-indigo-600 hover:bg-indigo-700 rounded text-white shadow-sm transition-colors" title="Create a new Gem manually"><Plus size={20}/></button>
-            <div className="h-px bg-slate-200 w-full" />
-            <button onClick={() => setZoom(z => Math.min(z + 0.3, 4))} className="p-3 bg-slate-100 hover:bg-slate-200 rounded text-slate-600"><ZoomIn size={20}/></button>
-            <button onClick={() => setZoom(z => Math.max(z - 0.3, 0.2))} className="p-3 bg-slate-100 hover:bg-slate-200 rounded text-slate-600"><ZoomOut size={20}/></button>
+          <div className="flex flex-col gap-2 bg-200/50 backdrop-blur p-2 rounded-xl">
+            <button onClick={() => setIsAddingNode(true)} className="p-3 bg-primary hover:bg-primary-hover rounded text-white transition-colors" title="Create a new Gem manually"><Plus size={20}/></button>
+            <div className="h-px bg-300 w-full" />
+            <button onClick={() => setZoom(z => Math.min(z + 0.3, 4))} className="p-3 bg-300 hover:bg-400 rounded text-600"><ZoomIn size={20}/></button>
+            <button onClick={() => setZoom(z => Math.max(z - 0.3, 0.2))} className="p-3 bg-300 hover:bg-400 rounded text-600"><ZoomOut size={20}/></button>
           </div>
 
           {/* The Trash Can Drop Zone */}
           <div
             ref={trashRef}
-            className={`flex flex-col items-center justify-center w-24 h-24 rounded-xl shadow-lg border-2 transition-all duration-300 ${
+            className={`flex flex-col items-center justify-center w-24 h-24 rounded-xl bg-200/50 transition-all duration-300 ${
               !draggingNode 
                 ? 'opacity-0 scale-90 translate-y-10 pointer-events-none absolute' 
                 : isHoveringTrash
-                  ? 'opacity-100 scale-110 translate-y-0 bg-red-100 border-red-500 text-red-600' 
-                  : 'opacity-100 scale-100 translate-y-0 bg-white/90 backdrop-blur border-red-200 text-red-400' 
+                  ? 'opacity-100 scale-110 translate-y-0 bg-400/90 border-danger text-danger' 
+                  : 'opacity-100 scale-100 translate-y-0 bg-200/50 backdrop-blur border-danger-light text-danger' 
             }`}
           >
             <Trash2 size={32} className={isHoveringTrash ? 'animate-bounce' : ''} />
@@ -480,22 +480,27 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
 
       {/* --- SIDEBAR FOR OVERFLOW / UNMAPPED --- */}
       {(sidebarZone || zones.exploring.length > 0) && (
-        <div className="w-64 bg-white border-l border-slate-200 shadow-[-10px_0_20px_rgba(0,0,0,0.05)] z-50 flex flex-col animate-in slide-in-from-right duration-300">
-          <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center shrink-0">
-            <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">
+        <div className="w-64 bg-300 backdrop-blur p-2 flex flex-col animate-in slide-in-from-right duration-300">
+          <div className="p-4 flex justify-between items-center shrink-0 rounded-2xl">
+            <h3 className="font-bold text-text text-sm uppercase tracking-wider font-serif">
               {sidebarZone ? ZONE_TITLES[sidebarZone] : ZONE_TITLES.exploring}
             </h3>
             {sidebarZone && (
-              <button onClick={() => setSidebarZone(null)} className="p-1 hover:bg-slate-200 rounded-full text-slate-500">
+              <button onClick={() => setSidebarZone(null)} className="p-1 hover:bg-200 rounded-full text-secondary-text">
                 <X size={16} />
               </button>
             )}
           </div>
+
+          <div className="bg-300">
+            <div className="h-px bg-500 w-full" />
+          </div>
+
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
             {(sidebarZone ? zones[sidebarZone] : zones.exploring).map(node => (
               <div 
                 key={node.concept} 
-                className="bg-white border border-slate-200 p-3 rounded-lg shadow-sm cursor-grab active:cursor-grabbing hover:border-indigo-300 transition-colors"
+                className="bg-200 p-3 rounded-lg cursor-grab active:cursor-grabbing hover:border-primary transition-colors"
                 onPointerDown={(e) => {
                   e.stopPropagation();
                   setDraggingNode(node.concept);
@@ -509,12 +514,12 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
                   }
                 }}
               >
-                <div className="font-bold text-slate-700 text-sm">{node.concept}</div>
+                <div className="font-bold text-text text-sm">{node.concept}</div>
                 <div className="flex justify-between items-center mt-2">
                   <div className="flex gap-1 flex-wrap">
-                    {node.ik && <span className="text-[9px] px-1 bg-pink-100 text-pink-700 rounded">Love</span>}
-                    {node.i && <span className="text-[9px] px-1 bg-blue-100 text-blue-700 rounded">Good</span>}
-                    {node.g && <span className="text-[9px] px-1 bg-yellow-100 text-yellow-700 rounded">Needs</span>}
+                    {node.ik && <span className="text-[9px] px-1 bg-rose-100 text-rose-700 rounded">Love</span>}
+                    {node.i && <span className="text-[9px] px-1 bg-sky-100 text-sky-700 rounded">Good</span>}
+                    {node.g && <span className="text-[9px] px-1 bg-amber-100 text-amber-700 rounded">Needs</span>}
                     {node.ai && <span className="text-[9px] px-1 bg-emerald-100 text-emerald-700 rounded">Paid</span>}
                   </div>
                   {onAskCoach && (
@@ -523,7 +528,7 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
                         e.stopPropagation();
                         onAskCoach(node);
                       }}
-                      className="bg-indigo-600 hover:bg-indigo-500 text-white text-[9px] px-2 py-0.5 rounded transition-colors font-bold"
+                      className="bg-primary hover:bg-primary-hover text-white text-[9px] px-2 py-0.5 rounded transition-colors font-bold"
                     >
                       Ask Coach
                     </button>
@@ -537,26 +542,30 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
 
       {/* --- THE MANUAL CREATION MODAL OVERLAY --- */}
       {isAddingNode && (
-        <div className="absolute inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-80 overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200">
+        <div className="absolute inset-0 z-[100] flex items-center justify-center bg-neutral-900/40 backdrop-blur-sm animate-in fade-in duration-200 rounded-2xl">
+          <div className="bg-surface rounded-2xl shadow-2xl w-80 overflow-hidden animate-in zoom-in-95 duration-200">
             
             {/* Header */}
-            <div className="bg-slate-50 p-4 border-b border-slate-100 flex justify-between items-center">
-              <h3 className="text-lg font-bold text-slate-800 leading-tight">Create a Gem</h3>
-              <button onClick={() => setIsAddingNode(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-200 transition-colors">
+            <div className="bg-100 p-4  flex justify-between items-center">
+              <h3 className="text-lg font-bold text-text leading-tight">Create a Gem</h3>
+              <button onClick={() => setIsAddingNode(false)} className="text-secondary-text hover:text-text p-1 rounded-full hover:bg-300 transition-colors">
                 <X size={18} />
               </button>
             </div>
 
+            <div className="px-2 bg-100">
+              <div className="h-px bg-400 w-full" />
+            </div>
+
             {/* Form */}
-            <div className="p-5 space-y-5">
+            <div className="p-5 bg-100">
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Concept Name</label>
+                <label className="block text-xs font-bold text-text uppercase tracking-wider mb-2">Concept Name</label>
                 <input 
                   autoFocus
                   type="text"
                   placeholder="e.g. Graphic Design"
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-slate-800 placeholder-slate-400"
+                  className="w-full px-3 py-2 border border-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-text placeholder-300"
                   value={newNodeForm.concept}
                   onChange={(e) => setNewNodeForm({ ...newNodeForm, concept: e.target.value })}
                   onKeyDown={(e) => {
@@ -567,16 +576,16 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
               </div>
 
               <div>
-                <p className="text-xs text-slate-500 font-bold mb-3 uppercase tracking-wider">Ikigai Pillars</p>
+                <p className="text-xs text-300 font-bold mb-3 uppercase tracking-wider pt-2">Ikigai Pillars</p>
                 <div className="space-y-3">
                   {[
-                    { key: 'ik', label: 'I Love It', color: 'peer-checked:bg-pink-500' },
-                    { key: 'i', label: "I'm Good At It", color: 'peer-checked:bg-blue-500' },
-                    { key: 'g', label: 'The World Needs It', color: 'peer-checked:bg-yellow-500' },
-                    { key: 'ai', label: 'I Can Be Paid For It', color: 'peer-checked:bg-emerald-500' }
+                    { key: 'ik', label: 'I Love It', color: 'peer-checked:bg-ikigai-love' },
+                    { key: 'i', label: "I'm Good At It", color: 'peer-checked:bg-ikigai-skill' },
+                    { key: 'g', label: 'The World Needs It', color: 'peer-checked:bg-ikigai-need' },
+                    { key: 'ai', label: 'I Can Be Paid For It', color: 'peer-checked:bg-ikigai-paid' }
                   ].map((pillar) => (
                     <label key={pillar.key} className="flex items-center justify-between cursor-pointer group">
-                      <span className="text-sm font-semibold text-slate-700 group-hover:text-slate-900 transition-colors">{pillar.label}</span>
+                      <span className="text-sm font-semibold text-text group-hover:text-text transition-colors">{pillar.label}</span>
                       <div className="relative">
                         <input 
                           type="checkbox" 
@@ -584,7 +593,7 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
                           checked={newNodeForm[pillar.key as keyof typeof newNodeForm] as boolean}
                           onChange={(e) => setNewNodeForm({ ...newNodeForm, [pillar.key]: e.target.checked })}
                         />
-                        <div className={`w-11 h-6 bg-slate-200 rounded-full peer ${pillar.color} peer-focus:ring-4 peer-focus:ring-indigo-100 transition-all after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white`}></div>
+                        <div className={`w-11 h-6 bg-200 rounded-full peer ${pillar.color} peer-focus:ring-4 peer-focus:ring-primary-light transition-all after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-200 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:after:translate-x-full peer-checked:after:border-white`}></div>
                       </div>
                     </label>
                   ))}
@@ -592,12 +601,16 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
               </div>
             </div>
 
+            <div className="px-2 bg-100">
+              <div className="h-px bg-400 w-full" />
+            </div>
+
             {/* Actions */}
-            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+            <div className="p-4 bg-100 flex justify-end gap-3">
               <button 
                 onClick={() => setIsAddingNode(false)}
                 disabled={isSaving}
-                className="text-sm font-semibold text-slate-500 hover:text-slate-700 px-4 py-2"
+                className="text-sm font-semibold text-secondary-text hover:text-text px-4 py-2"
               >
                 Cancel
               </button>
@@ -605,7 +618,7 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
                 onClick={handleCreateNode}
                 // NEW: Button disabled unless at least one toggle is flipped!
                 disabled={isSaving || !newNodeForm.concept.trim() || !hasSelectedPillar}
-                className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-sm font-bold py-2 px-6 rounded-lg shadow-sm transition-colors flex items-center justify-center min-w-[100px]"
+                className="bg-primary hover:bg-primary-hover disabled:bg-300 disabled:cursor-not-allowed text-white text-sm font-bold py-2 px-6 rounded-lg shadow-sm transition-colors flex items-center justify-center min-w-[100px]"
               >
                 {isSaving ? <span className="animate-pulse">Saving...</span> : 'Create'}
               </button>

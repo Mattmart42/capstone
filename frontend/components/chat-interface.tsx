@@ -228,28 +228,32 @@ export default function ChatInterface({
   }
 
   return (
-    <div className="flex h-full flex-col w-full bg-white overflow-hidden">
+    <div className="flex h-full flex-col w-full bg-100 overflow-hidden">
       
       {/* Header */}
-      <div className="bg-indigo-600 p-4 text-white">
-        <h2 className="text-lg font-semibold flex items-center gap-2">
-          🤖 Ikigai Career Coach
+      <div className="bg-100 p-4 text-text">
+        <h2 className="text-lg font-semibold flex items-center gap-2 font-serif">
+          Wayfinder
         </h2>
-        <p className="text-xs text-indigo-100 opacity-80">
-          Discovering your passion, mission, vocation, and profession.
+        <p className="text-xs text-secondary-text">
+          Discover your passion, mission, vocation, or profession
         </p>
       </div>
 
+      <div className="px-2 bg-100">
+        <div className="h-px bg-400 w-full" />
+      </div>
+
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-100">
         {isFetchingHistory && (
           <div className="flex justify-center mt-10">
-            <div className="animate-pulse text-indigo-500">Loading your conversation...</div>
+            <div className="animate-pulse text-primary">Loading your conversation...</div>
           </div>
         )}
 
         {!isFetchingHistory && messages.length === 0 && (
-          <div className="text-center text-gray-500 mt-10">
+          <div className="text-center text-text mt-10">
             <p>👋 Hi there! I'm here to help you find your path.</p>
             <p className="text-sm">Tell me a bit about yourself to get started.</p>
           </div>
@@ -278,10 +282,10 @@ export default function ChatInterface({
             <div key={m.id} className="flex flex-col space-y-2">
               <div className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm shadow-sm ${
+                  className={`max-w-[100%] rounded-2xl px-4 py-2 text-sm ${
                     m.role === 'user'
-                      ? 'bg-indigo-600 text-white rounded-br-none'
-                      : 'bg-white text-gray-800 border border-gray-200 rounded-bl-none'
+                      ? 'bg-primary text-white rounded-br-none'
+                      : ' text-text  rounded-bl-none'
                   }`}
                 >
                   <div className="whitespace-pre-wrap">{displayContent}</div>
@@ -296,14 +300,14 @@ export default function ChatInterface({
                     return (
                       <div 
                         key={idx}
-                        className="bg-white/80 backdrop-blur-sm border border-indigo-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-all animate-in fade-in slide-in-from-left-4 duration-300"
+                        className="bg-200 backdrop-blur-sm rounded-xl p-4 transition-all animate-in fade-in slide-in-from-left-4 duration-300"
                       >
                         <div className="flex justify-between items-start gap-4">
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              <h4 className="text-indigo-900 font-bold text-sm">{path.title}</h4>
+                              <h4 className="text-text font-bold text-sm font-serif">{path.title}</h4>
                               {path.estimated_salary && (
-                                <span className="bg-green-100 text-green-800 rounded-full px-2 py-0.5 text-[10px] font-bold">
+                                <span className="bg-success-light text-success rounded-xl px-2 py-0.5 text-[10px] font-bold">
                                   {path.estimated_salary}
                                 </span>
                               )}
@@ -312,22 +316,22 @@ export default function ChatInterface({
                             {path.real_world_titles && path.real_world_titles.length > 0 && (
                               <div className="flex flex-wrap gap-1 mb-2">
                                 {path.real_world_titles.map((title, tIdx) => (
-                                  <span key={tIdx} className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded text-[10px]">
+                                  <span key={tIdx} className="bg-300 text-text px-1.5 py-0.5 rounded text-[10px]">
                                     {title}
                                   </span>
                                 ))}
                               </div>
                             )}
 
-                            <p className="text-gray-600 text-xs leading-relaxed">{path.description}</p>
+                            <p className="text-text text-xs leading-relaxed">{path.description}</p>
                           </div>
                           <button
                             onClick={() => handleSavePath(path, idx, m.id)}
                             disabled={isSaved}
                             className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                               isSaved 
-                                ? 'bg-green-50 text-green-600 cursor-default' 
-                                : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm active:scale-95'
+                                ? 'bg-success-light text-success cursor-default' 
+                                : 'bg-primary text-white hover:bg-primary-hover shadow-sm active:scale-95'
                             }`}
                           >
                             {isSaved ? (
@@ -348,7 +352,7 @@ export default function ChatInterface({
         
         {isLoading && messages[messages.length - 1]?.role === 'user' && (
           <div className="flex justify-start">
-            <div className="bg-gray-200 text-gray-500 rounded-2xl px-4 py-2 text-sm animate-pulse">
+            <div className="bg-200 text-text rounded-2xl px-4 py-2 text-sm animate-pulse">
               Thinking...
             </div>
           </div>
@@ -358,15 +362,15 @@ export default function ChatInterface({
 
       {/* Context Banner */}
       {activeGem && (
-        <div className="mx-4 mb-2 p-3 bg-white/90 backdrop-blur border border-slate-200 rounded-xl shadow-sm animate-in slide-in-from-bottom-2 duration-200">
+        <div className="mx-4 mb-2 p-3 bg-100/50 backdrop-blur border border-border rounded-xl animate-in slide-in-from-bottom-2 duration-200">
           <div className="flex justify-between items-start mb-2">
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Targeting Gem</p>
-              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1">
+              <p className="text-[10px] font-bold text-secondary-text uppercase tracking-tighter">Targeting Gem</p>
+              <h3 className="text-sm font-bold text-text flex items-center gap-1">
                 {activeGem.emoji} {activeGem.concept}
               </h3>
             </div>
-            <button onClick={clearActiveGem} className="text-slate-400 hover:text-slate-600">
+            <button onClick={clearActiveGem} className="text-secondary-text hover:text-text">
               <X size={14} />
             </button>
           </div>
@@ -375,7 +379,7 @@ export default function ChatInterface({
               <button
                 key={i}
                 onClick={() => handleSuggestionClick(s)}
-                className="text-[11px] bg-indigo-50 text-indigo-600 px-2 py-1 rounded-lg border border-indigo-100 hover:bg-indigo-100 transition-colors text-left"
+                className="text-[11px] bg-primary-light text-primary px-2 py-1 rounded-lg border border-primary-light hover:bg-primary-light transition-colors text-left"
               >
                 {s}
               </button>
@@ -384,17 +388,21 @@ export default function ChatInterface({
         </div>
       )}
 
+      <div className="px-2 bg-100">
+        <div className="h-px bg-400 w-full" />
+      </div>
+
       {/* Input Area with Mode Selector */}
-      <div className="bg-white border-t border-gray-100 p-4 flex flex-col gap-3">
+      <div className="bg-100 p-4 flex flex-col gap-3">
         
         {/* NEW: Mode Selector UI */}
         <div className="flex items-center justify-center gap-2">
-          <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider mr-2">Goal:</span>
+          <span className="text-xs font-semibold text-secondary-text uppercase tracking-wider mr-2">Goal:</span>
           
           <button 
             onClick={() => setMode('onboard')}
             className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
-              mode === 'onboard' ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              mode === 'onboard' ? 'bg-primary text-white border border-primary-light' : 'bg-200 text-text hover:bg-300'
             }`}
           >
             Assess
@@ -403,7 +411,7 @@ export default function ChatInterface({
           <button 
             onClick={() => setMode('absorb')}
             className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
-              mode === 'absorb' ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              mode === 'absorb' ? 'bg-primary text-white border border-primary-light' : 'bg-200 text-text hover:bg-300'
             }`}
           >
             Listen
@@ -412,7 +420,7 @@ export default function ChatInterface({
           <button 
             onClick={() => setMode('probe')}
             className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
-              mode === 'probe' ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              mode === 'probe' ? 'bg-primary text-white border border-primary-light' : 'bg-200 text-text hover:bg-300'
             }`}
           >
             Ask
@@ -421,7 +429,7 @@ export default function ChatInterface({
           <button 
             onClick={() => setMode('advise')}
             className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
-              mode === 'advise' ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+              mode === 'advise' ? 'bg-primary text-white border border-primary-light' : 'bg-200 text-text hover:bg-300'
             }`}
           >
             Advise
@@ -431,7 +439,7 @@ export default function ChatInterface({
         {/* Input Form */}
         <form onSubmit={handleSubmit} className="flex gap-2">
           <input
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-gray-900 placeholder-gray-400"
+            className="flex-1 px-4 py-2 bg-200 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-text placeholder-secondary-text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={
@@ -445,7 +453,7 @@ export default function ChatInterface({
           <button
             type="submit"
             disabled={isLoading || !input.trim()}
-            className="bg-indigo-600 text-white p-2 rounded-full hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="bg-primary text-white p-2 rounded-full hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />

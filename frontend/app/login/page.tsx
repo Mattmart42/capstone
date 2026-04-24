@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { useRouter } from 'next/navigation'
 
@@ -12,6 +12,16 @@ export default function LoginPage() {
   
   const supabase = createClient()
   const router = useRouter()
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        router.push('/')
+      }
+    }
+    checkUser()
+  }, [supabase, router])
 
   const handleSignUp = async () => {
     setLoading(true)
@@ -43,49 +53,49 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
-      <div className="w-full max-w-md space-y-8 rounded-lg bg-white p-6 shadow-md">
+    <div className="flex min-h-screen items-top justify-center bg-200 p-4">
+      <div className="w-full max-w-md space-y-8 rounded-lg p-6">
         <div className="text-center">
-          <h2 className="text-3xl font-extrabold text-gray-900">
-            Welcome
+          <h2 className="text-3xl font-extrabold text-text font-serif">
+            Sign in to IkigAI
           </h2>
-          <p className="mt-2 text-sm text-gray-600">Sign in continue</p>
+          <p className="mt-2 text-sm text-secondary-text">Create an account or sign in to continue</p>
         </div>
         
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Email</label>
+            <label className="block text-sm font-medium text-text">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full rounded-md border border-gray-300 p-2 text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              className="mt-1 block w-full rounded-md bg-100 p-2 text-text focus:border-primary focus:ring-primary"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Password</label>
+            <label className="block text-sm font-medium text-text">Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 block w-full rounded-md border border-gray-300 p-2 text-gray-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              className="mt-1 block w-full rounded-md bg-100 p-2 text-text focus:border-primary focus:ring-primary"
             />
           </div>
 
-          {message && <p className="text-sm text-red-500">{message}</p>}
+          {message && <p className="text-sm text-danger">{message}</p>}
 
           <div className="flex gap-4">
             <button
               onClick={handleSignIn}
               disabled={loading}
-              className="flex-1 rounded-md bg-indigo-600 px-4 py-2 text-white hover:bg-indigo-700 disabled:opacity-50"
+              className="flex-1 rounded-md bg-primary px-4 py-2 text-white hover:bg-primary-hover disabled:opacity-50"
             >
               {loading ? 'Loading...' : 'Sign In'}
             </button>
             <button
               onClick={handleSignUp}
               disabled={loading}
-              className="flex-1 rounded-md border border-gray-300 bg-white px-4 py-2 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="flex-1 rounded-md bg-100 px-4 py-2 text-text hover:bg-400 disabled:opacity-50"
             >
               Sign Up
             </button>
