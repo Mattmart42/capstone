@@ -132,15 +132,15 @@ export default function SavedPaths({ userId }: { userId: string }) {
       {/* Header */}
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
-            <Map className="text-indigo-600" size={32} />
+          <h1 className="text-3xl font-extrabold text-text tracking-tight flex items-center gap-3 font-serif">
+            <Map className="text-primary" size={32} />
             My Paths
           </h1>
-          <p className="text-slate-500 mt-2">Saved career trajectories and life blueprints.</p>
+          <p className="text-secondary-text mt-2">Saved career trajectories and life blueprints.</p>
         </div>
         <button 
           onClick={() => setIsAdding(true)}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-full font-semibold shadow-sm flex items-center gap-2 transition-all hover:shadow-md hover:-translate-y-0.5"
+          className="bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-full font-semibold flex items-center gap-2 transition-all hover:shadow-md hover:-translate-y-0.5"
         >
           <Plus size={18} /> Add Path
         </button>
@@ -150,22 +150,22 @@ export default function SavedPaths({ userId }: { userId: string }) {
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
           {[1, 2, 3].map(i => (
-            <div key={i} className="bg-white h-48 rounded-2xl border border-slate-100 shadow-sm"></div>
+            <div key={i} className="bg-surface h-48 rounded-2xl border border-border shadow-sm"></div>
           ))}
         </div>
       ) : paths.length === 0 ? (
         /* Empty State */
-        <div className="bg-white border border-slate-200 border-dashed rounded-3xl p-12 flex flex-col items-center justify-center text-center">
-          <div className="w-16 h-16 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center mb-4">
+        <div className="bg-surface border border-400 border-dashed rounded-3xl p-12 flex flex-col items-center justify-center text-center">
+          <div className="w-16 h-16 bg-primary-light text-primary rounded-full flex items-center justify-center mb-4">
             <Map size={32} />
           </div>
-          <h3 className="text-xl font-bold text-slate-800 mb-2">No paths charted yet</h3>
-          <p className="text-slate-500 max-w-sm mb-6">
+          <h3 className="text-xl font-bold text-text mb-2">No paths charted yet</h3>
+          <p className="text-secondary-text max-w-sm mb-6">
             Ask the AI coach to propose a career path based on your Ikigai board, or map out your own idea manually!
           </p>
           <button 
             onClick={() => setIsAdding(true)}
-            className="text-indigo-600 font-semibold hover:text-indigo-700 flex items-center gap-1"
+            className="text-primary font-semibold hover:text-primary-hover flex items-center gap-1"
           >
             Create your first path <ArrowRight size={16} />
           </button>
@@ -177,22 +177,22 @@ export default function SavedPaths({ userId }: { userId: string }) {
             const isEditing = editingPathId === path.id
             
             return (
-              <div key={path.id} className={`bg-white border ${isEditing ? 'border-indigo-400 ring-2 ring-indigo-50 shadow-lg' : 'border-slate-200'} rounded-2xl p-6 shadow-sm hover:shadow-md transition-all group flex flex-col relative overflow-hidden`}>
-                <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-fuchsia-500 ${isEditing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`} />
+              <div key={path.id} className={`bg-surface border ${isEditing ? 'border-primary ring-2 ring-primary-light shadow-lg' : 'border-border'} rounded-2xl p-6 shadow-sm hover:shadow-md transition-all group flex flex-col relative overflow-hidden`}>
+                <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-primary-light ${isEditing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`} />
                 
                 {isEditing && editFormData ? (
                   /* Edit Form */
                   <div className="flex flex-col h-full space-y-4">
                     <div className="flex justify-between items-center mb-1">
-                      <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest">Editing Path</span>
-                      <button onClick={() => setEditingPathId(null)} className="text-slate-400 hover:text-slate-600">
+                      <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Editing Path</span>
+                      <button onClick={() => setEditingPathId(null)} className="text-secondary-text hover:text-text">
                         <CircleX size={18} />
                       </button>
                     </div>
 
                     <div>
                       <input 
-                        className="w-full px-3 py-2 text-sm font-bold border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        className="w-full px-3 py-2 text-sm font-bold border border-border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
                         value={editFormData.title}
                         onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })}
                         placeholder="Path Title"
@@ -201,14 +201,14 @@ export default function SavedPaths({ userId }: { userId: string }) {
 
                     <div className="grid grid-cols-2 gap-2">
                       <input 
-                        className="w-full px-3 py-2 text-[11px] border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        className="w-full px-3 py-2 text-[11px] border border-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
                         value={editFormData.estimated_salary || ''}
                         onChange={(e) => setEditFormData({ ...editFormData, estimated_salary: e.target.value })}
                         placeholder="Salary (e.g. $100k)"
                       />
                       <div className="flex gap-1">
                         <input 
-                          className="flex-1 px-3 py-2 text-[11px] border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                          className="flex-1 px-3 py-2 text-[11px] border border-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
                           value={editTempTitle}
                           onChange={(e) => setEditTempTitle(e.target.value)}
                           placeholder="Add Title..."
@@ -231,7 +231,7 @@ export default function SavedPaths({ userId }: { userId: string }) {
                     {editFormData.real_world_titles && editFormData.real_world_titles.length > 0 && (
                       <div className="flex flex-wrap gap-1">
                         {editFormData.real_world_titles.map((t, i) => (
-                          <span key={i} className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[9px] font-bold flex items-center gap-1">
+                          <span key={i} className="bg-100 text-text px-1.5 py-0.5 rounded text-[9px] font-bold flex items-center gap-1">
                             {t}
                             <button onClick={() => setEditFormData({ ...editFormData, real_world_titles: editFormData.real_world_titles?.filter((_, idx) => idx !== i) })}>
                               <X size={10} />
@@ -242,7 +242,7 @@ export default function SavedPaths({ userId }: { userId: string }) {
                     )}
 
                     <textarea 
-                      className="w-full flex-1 px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none resize-none leading-relaxed"
+                      className="w-full flex-1 px-3 py-2 text-xs border border-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none resize-none leading-relaxed"
                       rows={4}
                       value={editFormData.description}
                       onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
@@ -253,7 +253,7 @@ export default function SavedPaths({ userId }: { userId: string }) {
                       <button 
                         onClick={handleUpdatePath}
                         disabled={isSaving || !editFormData.title.trim()}
-                        className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                        className="flex-1 bg-primary hover:bg-primary-hover text-white text-xs font-bold py-2 rounded-lg transition-colors flex items-center justify-center gap-1.5"
                       >
                         <Check size={14} /> {isSaving ? 'Saving...' : 'Save Changes'}
                       </button>
@@ -262,7 +262,7 @@ export default function SavedPaths({ userId }: { userId: string }) {
                           setEditingPathId(null)
                           setEditFormData(null)
                         }}
-                        className="px-3 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
+                        className="px-3 py-2 text-xs font-bold text-text hover:bg-100 rounded-lg transition-colors"
                       >
                         Cancel
                       </button>
@@ -274,9 +274,9 @@ export default function SavedPaths({ userId }: { userId: string }) {
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <h3 className="text-lg font-bold text-slate-800 leading-tight">{path.title}</h3>
+                          <h3 className="text-lg font-bold text-text leading-tight font-serif">{path.title}</h3>
                           {path.estimated_salary && (
-                            <span className="bg-green-100 text-green-800 rounded-full px-2 py-0.5 text-[10px] font-bold shadow-sm">
+                            <span className="bg-success-light text-success rounded-full px-2 py-0.5 text-[10px] font-bold shadow-sm">
                               {path.estimated_salary}
                             </span>
                           )}
@@ -285,7 +285,7 @@ export default function SavedPaths({ userId }: { userId: string }) {
                         {path.real_world_titles && path.real_world_titles.length > 0 && (
                           <div className="flex flex-wrap gap-1 mb-2">
                             {path.real_world_titles.map((title, idx) => (
-                              <span key={idx} className="bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded text-[10px] font-medium border border-slate-100">
+                              <span key={idx} className="bg-100 text-text px-1.5 py-0.5 rounded text-[10px] font-medium border border-200">
                                 {title}
                               </span>
                             ))}
@@ -299,24 +299,24 @@ export default function SavedPaths({ userId }: { userId: string }) {
                             setEditingPathId(path.id)
                             setEditFormData({ ...path })
                           }}
-                          className="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 p-1.5 rounded-md transition-colors"
+                          className="text-text hover:text-primary hover:bg-primary-light p-1.5 rounded-md transition-colors"
                         >
                           <Pencil size={16} />
                         </button>
                         <button 
                           onClick={() => handleDelete(path.id)}
-                          className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-md transition-colors"
+                          className="text-text hover:text-red-500 hover:bg-red-50 p-1.5 rounded-md transition-colors"
                         >
                           <Trash2 size={16} />
                         </button>
                       </div>
                     </div>
                     
-                    <p className="text-slate-600 text-sm flex-1 whitespace-pre-wrap leading-relaxed">
+                    <p className="text-text text-sm flex-1 whitespace-pre-wrap leading-relaxed">
                       {path.description}
                     </p>
                     
-                    <div className="mt-6 pt-4 border-t border-slate-100 text-xs text-slate-400 font-medium">
+                    <div className="mt-6 pt-4 border-t border-300 text-xs text-secondary-text font-medium">
                       Mapped on {new Date(path.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric'})}
                     </div>
                   </>
@@ -329,24 +329,28 @@ export default function SavedPaths({ userId }: { userId: string }) {
 
       {/* Manual Creation Modal */}
       {isAdding && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200 px-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-700/40 backdrop-blur-sm animate-in fade-in duration-200 px-4">
+          <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-border animate-in zoom-in-95 duration-200">
             
-            <div className="bg-slate-50 p-5 border-b border-slate-100 flex justify-between items-center">
-              <h3 className="text-lg font-bold text-slate-800">Map a New Path</h3>
-              <button onClick={() => setIsAdding(false)} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-200 transition-colors">
+            <div className="bg-100 p-4 flex justify-between items-center">
+              <h3 className="text-lg font-bold text-text">Map a New Path</h3>
+              <button onClick={() => setIsAdding(false)} className="text-secondary-text hover:text-text p-1.5 rounded-full hover:bg-300 transition-colors">
                 <X size={20} />
               </button>
             </div>
 
-            <div className="p-6 space-y-5">
+            <div className="px-2 bg-100">
+              <div className="h-px bg-300 w-full" />
+            </div>
+
+            <div className="bg-100 p-6 space-y-5">
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Path Title</label>
+                <label className="block text-xs font-bold text-text uppercase tracking-wider mb-2">Path Title</label>
                 <input 
                   autoFocus
                   type="text"
                   placeholder="e.g. Technical Product Manager"
-                  className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 placeholder-slate-400 font-medium"
+                  className="w-full px-4 py-2.5 border border-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-text placeholder-secondary-text font-medium"
                   value={newPath.title}
                   onChange={(e) => setNewPath({ ...newPath, title: e.target.value })}
                 />
@@ -354,22 +358,22 @@ export default function SavedPaths({ userId }: { userId: string }) {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Salary Range (Optional)</label>
+                  <label className="block text-xs font-bold text-text uppercase tracking-wider mb-2">Salary Range (Optional)</label>
                   <input 
                     type="text"
                     placeholder="e.g. $120k - $150k"
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 placeholder-slate-400 text-sm"
+                    className="w-full px-4 py-2.5 border border-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-text placeholder-secondary-text font-medium"
                     value={newPath.estimated_salary}
                     onChange={(e) => setNewPath({ ...newPath, estimated_salary: e.target.value })}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Real-World Titles</label>
+                  <label className="block text-xs font-bold text-text uppercase tracking-wider mb-2">Real-World Titles</label>
                   <div className="flex gap-2">
                     <input 
                       type="text"
                       placeholder="Add title..."
-                      className="flex-1 px-4 py-2.5 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 placeholder-slate-400 text-sm"
+                      className="flex-1 px-4 py-2.5 border border-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-text placeholder-secondary-text font-medium"
                       value={tempTitle}
                       onChange={(e) => setTempTitle(e.target.value)}
                       onKeyDown={(e) => {
@@ -389,7 +393,7 @@ export default function SavedPaths({ userId }: { userId: string }) {
                           setTempTitle('')
                         }
                       }}
-                      className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition-colors"
+                      className="p-2.5 bg-200 hover:bg-300 text-text rounded-xl transition-colors shrink-0"
                     >
                       <Plus size={20} />
                     </button>
@@ -400,7 +404,7 @@ export default function SavedPaths({ userId }: { userId: string }) {
               {newPath.real_world_titles.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {newPath.real_world_titles.map((t, i) => (
-                    <span key={i} className="bg-indigo-50 text-indigo-700 px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 border border-indigo-100">
+                    <span key={i} className="bg-primary-light text-primary px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 border border-primary-light">
                       {t}
                       <button onClick={() => setNewPath({ ...newPath, real_world_titles: newPath.real_world_titles.filter((_, idx) => idx !== i) })}>
                         <X size={12} />
@@ -411,29 +415,33 @@ export default function SavedPaths({ userId }: { userId: string }) {
               )}
 
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Description & Strategy</label>
+                <label className="block text-xs font-bold text-text uppercase tracking-wider mb-2">Description & Strategy</label>
                 <textarea 
                   rows={4}
                   placeholder="Combine my SwiftUI skills with my interest in fitness to build tools for..."
-                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 placeholder-slate-400 resize-none text-sm leading-relaxed"
+                  className="w-full px-4 py-3 border border-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-text placeholder-secondary-text font-medium"
                   value={newPath.description}
                   onChange={(e) => setNewPath({ ...newPath, description: e.target.value })}
                 />
               </div>
             </div>
 
-            <div className="p-5 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+            <div className="px-2 bg-100">
+              <div className="h-px bg-300 w-full" />
+            </div>
+
+            <div className="p-5 bg-100 flex justify-end gap-3">
               <button 
                 onClick={() => setIsAdding(false)}
                 disabled={isSaving}
-                className="text-sm font-semibold text-slate-600 hover:text-slate-800 px-4 py-2"
+                className="text-sm font-semibold text-text hover:text-primary px-4 py-2"
               >
                 Cancel
               </button>
               <button 
                 onClick={handleSavePath}
                 disabled={isSaving || !newPath.title.trim()}
-                className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-sm font-bold py-2.5 px-6 rounded-xl shadow-sm transition-colors flex items-center justify-center min-w-[120px]"
+                className="bg-primary hover:bg-primary-hover disabled:bg-300 disabled:cursor-not-allowed text-white text-sm font-bold py-2.5 px-6 rounded-xl transition-colors flex items-center justify-center min-w-[120px]"
               >
                 {isSaving ? <span className="animate-pulse">Saving...</span> : 'Save Path'}
               </button>

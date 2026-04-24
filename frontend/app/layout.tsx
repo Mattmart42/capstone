@@ -1,15 +1,28 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { Averia_Serif_Libre, Overlock } from "next/font/google";
 import { Navbar } from "@/components/navbar";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// const geistSans = Geist({
+//   variable: "--font-geist-sans",
+//   subsets: ["latin"],
+// });
+
+// const geistMono = Geist_Mono({
+//   variable: "--font-geist-mono",
+//   subsets: ["latin"],
+// });
+
+const asLibre = Averia_Serif_Libre({
+  weight: ["300", "400", "700"],
+  variable: "--font-averia-serif-libre",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const overlock = Overlock({
+  weight: ["400", "700"],
+  variable: "--font-overlock",
   subsets: ["latin"],
 });
 
@@ -26,10 +39,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${asLibre.variable} ${overlock.variable} font-sans antialiased`}
       >
         <Navbar />
-        <main className="pt-24">
+        <main>
           {children}
         </main>
       </body>

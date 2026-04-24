@@ -14,10 +14,10 @@ export default async function UploadPage() {
 
   // 3. If yes, show the upload form
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-4">
-      <div className="w-full max-w-xl rounded-lg bg-white p-8 shadow-lg">
-        <h1 className="mb-2 text-2xl font-bold text-gray-900">Upload Your Resume</h1>
-        <p className="mb-6 text-gray-500">
+    <div className="flex min-h-screen flex-col items-center justify-top bg-200 p-4">
+      <div className="w-full max-w-xl rounded-lg p-8">
+        <h1 className="mb-2 text-2xl font-bold text-text font-serif">Upload Your Resume</h1>
+        <p className="mb-6 text-secondary-text">
           Upload your PDF resume to start your profile.
         </p>
         

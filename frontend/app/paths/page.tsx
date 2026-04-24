@@ -11,7 +11,7 @@ export default async function PathsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-200">
       {/* We pass the userId prop to the component you just built! */}
       <SavedPaths userId={user.id} />
     </div>
