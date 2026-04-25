@@ -71,7 +71,7 @@ export function Navbar() {
   ];
 
   return (
-    <nav className="sticky top-0 w-full z-50 bg-200 px-3 pt-3">
+    <nav className="relative w-full z-50 bg-200 px-3 pt-3">
       <div className="w-full flex items-center justify-between px-6 py-3 bg-100 backdrop-blur rounded-2xl">
         <Link href="/" className="flex items-center gap-3 group">
           <span className="text-xl text-text font-bold font-serif tracking-tight">

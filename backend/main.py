@@ -402,7 +402,10 @@ async def chat_endpoint(request: ChatRequest):
         Wrap-Up Format: Thank them for sharing. Write a cohesive 2-3 sentence summary of who they are, blending their creative/discipline traits. 
         Finally, tell them you have populated their Ikigai board and invite them to explore the visual map to see their paths. 
         Tell them they can add new gems, move existing gems, or click on an existing gem to explore it further. Tell them that you can also help them brainstorm 
-        side projects or career paths based on their map whenever they want.""",
+        side projects or career paths based on their map whenever they want.
+
+        CRITICAL: At the very end of your response, you MUST append this exact string: ===ONBOARDING_COMPLETE===
+        """,
                 
         "absorb": """
         CURRENT GOAL: ACTIVE LISTENING.

@@ -1,6 +1,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import SavedPaths from '@/components/saved-paths' 
+import { checkOnboardingStatus } from '@/utils/onboarding'
 
 export default async function PathsPage() {
   const supabase = await createClient()
@@ -10,9 +11,13 @@ export default async function PathsPage() {
     redirect('/login')
   }
 
+  const isComplete = await checkOnboardingStatus(user.id)
+  if (!isComplete) {
+    redirect('/onboarding')
+  }
+
   return (
-    <div className="min-h-screen bg-200">
-      {/* We pass the userId prop to the component you just built! */}
+    <div className="h-full bg-200 overflow-hidden">
       <SavedPaths userId={user.id} />
     </div>
   )
