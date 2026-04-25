@@ -10,7 +10,7 @@ export default function ChatContainer({ userId }: { userId: string }) {
   const clearActiveGem = () => setActiveGem(null)
 
   return (
-    <div className="h-[calc(100vh-66px)] w-full flex flex-col lg:flex-row bg-200 overflow-hidden p-3">
+    <div className="h-full w-full flex flex-col lg:flex-row bg-200 overflow-hidden p-3">
 
       {/* Left Side: The Chat (Fixed width sidebar on desktop) */}
       <div className="w-full lg:w-[400px] xl:w-[450px] flex-shrink-0 h-[50vh] lg:h-full z-20">

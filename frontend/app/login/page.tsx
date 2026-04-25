@@ -53,7 +53,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-top justify-center bg-200 p-4">
+    <div className="flex h-full items-top justify-center bg-200 p-4 overflow-hidden">
       <div className="w-full max-w-md space-y-8 rounded-lg p-6">
         <div className="text-center">
           <h2 className="text-3xl font-extrabold text-text font-serif">

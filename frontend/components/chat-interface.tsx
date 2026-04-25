@@ -22,26 +22,39 @@ type AIMode = 'absorb' | 'probe' | 'advise' | 'onboard'
 export default function ChatInterface({ 
   userId, 
   activeGem, 
-  clearActiveGem 
+  clearActiveGem,
+  onboardingMode = false,
+  onOnboardingComplete
 }: { 
   userId: string, 
   activeGem: any, 
-  clearActiveGem: () => void 
+  clearActiveGem: () => void,
+  onboardingMode?: boolean,
+  onOnboardingComplete?: () => void
 }) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isFetchingHistory, setIsFetchingHistory] = useState(true)
-  const [mode, setMode] = useState<AIMode>('probe') 
+  const [mode, setMode] = useState<AIMode>(onboardingMode ? 'onboard' : 'probe') 
   const [savedPaths, setSavedPaths] = useState<any[]>([])
   const [savedPathIds, setSavedPathIds] = useState<string[]>([])
+  const [isOnboardingDone, setIsOnboardingDone] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const supabase = createClient()
+
+  // Auto-focus input
+  useEffect(() => {
+    if (!isLoading && !isOnboardingDone) {
+      inputRef.current?.focus()
+    }
+  }, [isLoading, isOnboardingDone, activeGem])
 
   useEffect(() => {
     async function fetchInitialData() {
       if (!userId) return
-      
+
       try {
         // 1. Fetch Chat History
         const historyUrl = `http://localhost:8000/chat/history/${userId}`
@@ -51,6 +64,12 @@ export default function ChatInterface({
           const data = await historyResponse.json()
           historyMessages = data.messages
           setMessages(historyMessages)
+
+          // Check if onboarding was already completed in history
+          const lastAssistantMessage = [...historyMessages].reverse().find(m => m.role === 'assistant')
+          if (lastAssistantMessage?.content.includes('===ONBOARDING_COMPLETE===')) {
+            setIsOnboardingDone(true)
+          }
         }
 
         // 2. Fetch Profile for Ikigai Nodes and Saved Paths
@@ -59,15 +78,19 @@ export default function ChatInterface({
           .select('ikigai_nodes, saved_paths')
           .eq('id', userId)
           .single()
-        
+
         const nodes = profile?.ikigai_nodes || []
         const paths = profile?.saved_paths || []
         setSavedPaths(paths)
 
         // 3. Onboarding Logic
-        if (nodes.length === 0) {
-          setMode('onboard')
-          
+        if (onboardingMode || nodes.length === 0) {
+          if (!onboardingMode && nodes.length === 0) {
+            // If they are on the main dashboard but have no nodes, 
+            // maybe we should have redirected them, but for now just set mode.
+            setMode('onboard')
+          }
+
           // Auto-trigger greeting if no messages exist
           if (historyMessages.length === 0) {
             const greeting: Message = {
@@ -86,56 +109,12 @@ export default function ChatInterface({
     }
 
     fetchInitialData()
-  }, [userId, supabase])
+  }, [userId, supabase, onboardingMode])
 
-  // Auto-scroll
+  // Auto-scroll to bottom whenever messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
-
-  const handleSavePath = async (path: ProposedPath, pathIndex: number, messageId: string) => {
-    const uniqueId = `${messageId}-${pathIndex}`
-    if (savedPathIds.includes(uniqueId)) return
-
-    try {
-      // 1. Fetch current profile
-      const { data: profile, error: fetchError } = await supabase
-        .from('profiles')
-        .select('saved_paths')
-        .eq('id', userId)
-        .single()
-
-      if (fetchError) throw fetchError
-
-      const currentPaths = profile?.saved_paths || []
-      
-      // 2. Append new path
-      const newPath = {
-        id: Date.now().toString(),
-        title: path.title,
-        description: path.description,
-        real_world_titles: path.real_world_titles,
-        estimated_salary: path.estimated_salary,
-        created_at: new Date().toISOString()
-      }
-
-      const updatedPaths = [...currentPaths, newPath]
-
-      // 3. Update table
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ saved_paths: updatedPaths })
-        .eq('id', userId)
-
-      if (updateError) throw updateError
-
-      setSavedPaths(updatedPaths)
-      setSavedPathIds(prev => [...prev, uniqueId])
-    } catch (error) {
-      console.error("Error saving path:", error)
-      alert("Failed to save path.")
-    }
-  }
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return
@@ -145,7 +124,7 @@ export default function ChatInterface({
       role: 'user',
       content: text
     }
-    
+
     setMessages(prev => [...prev, userMessage])
     setIsLoading(true)
 
@@ -157,14 +136,13 @@ export default function ChatInterface({
         content: ''
       }])
 
-      // UPDATED: Now we pass the 'mode' and 'saved_paths' to the backend
       const response = await fetch('http://localhost:8000/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: userId,
           mode: mode,
-          saved_paths: savedPaths, // <--- INJECTING SAVED PATHS HERE
+          saved_paths: savedPaths,
           messages: [...messages, userMessage].map(m => ({
             role: m.role,
             content: m.content
@@ -191,6 +169,10 @@ export default function ChatInterface({
             ? { ...msg, content: accumulatedText }
             : msg
         ))
+
+        if (accumulatedText.includes('===ONBOARDING_COMPLETE===')) {
+          setIsOnboardingDone(true)
+        }
       }
 
     } catch (error) {
@@ -229,14 +211,14 @@ export default function ChatInterface({
 
   return (
     <div className="flex h-full flex-col w-full bg-100 overflow-hidden">
-      
+
       {/* Header */}
       <div className="bg-100 p-4 text-text">
         <h2 className="text-lg font-semibold flex items-center gap-2 font-serif">
-          Wayfinder
+          {onboardingMode ? "Onboarding" : "Wayfinder"}
         </h2>
         <p className="text-xs text-secondary-text">
-          Discover your passion, mission, vocation, or profession
+          {onboardingMode ? "Tell us about yourself to populate your board" : "Discover your passion, mission, vocation, or profession"}
         </p>
       </div>
 
@@ -263,11 +245,13 @@ export default function ChatInterface({
           // Parse paths if they exist
           const pathsRegex = /===PATHS_JSON=== (.*?) ===END_PATHS_JSON===/
           const match = m.content.match(pathsRegex)
-          
-          // NEW: Create a sanitized display string by splitting at the delimiter
-          // This prevents raw JSON from "leaking" into the UI while streaming
-          const displayContent = m.content.split('===PATHS_JSON===')[0].trim()
-          
+
+          // Filter out tokens
+          let displayContent = m.content
+            .split('===PATHS_JSON===')[0]
+            .split('===ONBOARDING_COMPLETE===')[0]
+            .trim()
+
           let parsedPaths: ProposedPath[] = []
 
           if (match) {
@@ -349,7 +333,7 @@ export default function ChatInterface({
             </div>
           )
         })}
-        
+
         {isLoading && messages[messages.length - 1]?.role === 'user' && (
           <div className="flex justify-start">
             <div className="bg-200 text-text rounded-2xl px-4 py-2 text-sm animate-pulse">
@@ -357,11 +341,23 @@ export default function ChatInterface({
             </div>
           </div>
         )}
+
+        {isOnboardingDone && onboardingMode && (
+          <div className="flex justify-center p-4">
+            <button
+              onClick={onOnboardingComplete}
+              className="bg-success text-white px-8 py-4 rounded-2xl font-bold shadow-xl hover:scale-105 transition-transform flex items-center gap-2"
+            >
+              <CheckCircle2 size={24} />
+              Show my Board
+            </button>
+          </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
 
       {/* Context Banner */}
-      {activeGem && (
+      {activeGem && !onboardingMode && (
         <div className="mx-4 mb-2 p-3 bg-100/50 backdrop-blur border border-border rounded-xl animate-in slide-in-from-bottom-2 duration-200">
           <div className="flex justify-between items-start mb-2">
             <div>
@@ -394,51 +390,45 @@ export default function ChatInterface({
 
       {/* Input Area with Mode Selector */}
       <div className="bg-100 p-4 flex flex-col gap-3">
-        
-        {/* NEW: Mode Selector UI */}
-        <div className="flex items-center justify-center gap-2">
-          <span className="text-xs font-semibold text-secondary-text uppercase tracking-wider mr-2">Goal:</span>
-          
-          <button 
-            onClick={() => setMode('onboard')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
-              mode === 'onboard' ? 'bg-primary text-white border border-primary-light' : 'bg-200 text-text hover:bg-300'
-            }`}
-          >
-            Assess
-          </button>
 
-          <button 
-            onClick={() => setMode('absorb')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
-              mode === 'absorb' ? 'bg-primary text-white border border-primary-light' : 'bg-200 text-text hover:bg-300'
-            }`}
-          >
-            Listen
-          </button>
-          
-          <button 
-            onClick={() => setMode('probe')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
-              mode === 'probe' ? 'bg-primary text-white border border-primary-light' : 'bg-200 text-text hover:bg-300'
-            }`}
-          >
-            Ask
-          </button>
-          
-          <button 
-            onClick={() => setMode('advise')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
-              mode === 'advise' ? 'bg-primary text-white border border-primary-light' : 'bg-200 text-text hover:bg-300'
-            }`}
-          >
-            Advise
-          </button>
-        </div>
+        {/* Mode Selector UI */}
+        {!onboardingMode && (
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-xs font-semibold text-secondary-text uppercase tracking-wider mr-2">Goal:</span>
+
+            <button 
+              onClick={() => setMode('absorb')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+                mode === 'absorb' ? 'bg-primary text-white border border-primary-light' : 'bg-200 text-text hover:bg-300'
+              }`}
+            >
+              Listen
+            </button>
+
+            <button 
+              onClick={() => setMode('probe')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+                mode === 'probe' ? 'bg-primary text-white border border-primary-light' : 'bg-200 text-text hover:bg-300'
+              }`}
+            >
+              Ask
+            </button>
+
+            <button 
+              onClick={() => setMode('advise')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+                mode === 'advise' ? 'bg-primary text-white border border-primary-light' : 'bg-200 text-text hover:bg-300'
+              }`}
+            >
+              Advise
+            </button>
+          </div>
+        )}
 
         {/* Input Form */}
         <form onSubmit={handleSubmit} className="flex gap-2">
           <input
+            ref={inputRef}
             className="flex-1 px-4 py-2 bg-200 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-text placeholder-secondary-text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -448,11 +438,11 @@ export default function ChatInterface({
               mode === 'probe' ? "Ask me questions..." :
               "Give me advice..."
             }
-            disabled={isLoading}
+            disabled={isLoading || (onboardingMode && isOnboardingDone)}
           />
           <button
             type="submit"
-            disabled={isLoading || !input.trim()}
+            disabled={isLoading || !input.trim() || (onboardingMode && isOnboardingDone)}
             className="bg-primary text-white p-2 rounded-full hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">

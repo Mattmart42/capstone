@@ -37,12 +37,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="h-full">
       <body
-        className={`${asLibre.variable} ${overlock.variable} font-sans antialiased`}
+        className={`${asLibre.variable} ${overlock.variable} font-sans antialiased h-full overflow-hidden flex flex-col`}
       >
-        <Navbar />
-        <main>
+        <div className="flex-shrink-0">
+          <Navbar />
+        </div>
+        <main className="flex-1 overflow-hidden">
           {children}
         </main>
       </body>

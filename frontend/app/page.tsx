@@ -1,22 +1,31 @@
 import Link from 'next/link'
 import { createClient } from '@/utils/supabase/server'
 import FlowerIcon from '@/components/navbar'
+import { checkOnboardingStatus } from '@/utils/onboarding'
+import { redirect } from 'next/navigation'
 
 export default async function Home() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
+  if (user) {
+    const isComplete = await checkOnboardingStatus(user.id)
+    if (!isComplete) {
+      redirect('/onboarding')
+    }
+  }
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24 bg-200 text-text">
+    <main className="flex h-full flex-col items-center justify-center p-24 bg-200 text-text overflow-hidden">
       <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
-        <p className="fixed left-0 top-0 flex w-full justify-center bg-200 pb-6 pt-8 backdrop-blur-2xl lg:static lg:w-auto lg:rounded-xl lg:bg-200 lg:p-4">
+        <div className="fixed left-0 top-0 flex w-full justify-center bg-200 pb-6 pt-8 backdrop-blur-2xl lg:static lg:w-auto lg:rounded-xl lg:bg-200 lg:p-4">
           <div className="relative">
             <FlowerIcon className="h-50 w-50 text-primary" />
             <span className="absolute inset-0 flex items-center justify-center text-xl font-bold font-serif tracking-tight">
               Ikig.<span className="text-primary group-hover:italic transition-all">AI</span>
             </span>
           </div>
-        </p>
+        </div>
         
         <div className="fixed bottom-0 left-0 flex h-48 w-full items-end justify-center bg-gradient-to-t from-surface lg:static lg:h-auto lg:w-auto lg:bg-none">
           <Link 
