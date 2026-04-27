@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { X, Save, CheckCircle2 } from 'lucide-react'
+import { X, Save, CheckCircle2, AlertCircle } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 
 type Message = {
@@ -35,6 +35,7 @@ export default function ChatInterface({
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [isFetchingHistory, setIsFetchingHistory] = useState(true)
   const [mode, setMode] = useState<AIMode>(onboardingMode ? 'onboard' : 'probe') 
   const [savedPaths, setSavedPaths] = useState<any[]>([])
@@ -102,8 +103,9 @@ export default function ChatInterface({
             setMessages([greeting])
           }
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Failed to fetch initial data:", error)
+        setError("Failed to load conversation history. Some data might be missing.")
       } finally {
         setIsFetchingHistory(false)
       }
@@ -116,6 +118,14 @@ export default function ChatInterface({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Clear error after 5 seconds
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(null), 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [error])
 
   const handleSavePath = async (path: ProposedPath, pathIndex: number, messageId: string) => {
     const uniqueId = `${messageId}-${pathIndex}`
@@ -155,9 +165,9 @@ export default function ChatInterface({
 
       setSavedPaths(updatedPaths)
       setSavedPathIds(prev => [...prev, uniqueId])
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving path:", error)
-      alert("Failed to save path.")
+      setError("Failed to save path. Please try again.")
     }
   }
 
@@ -195,8 +205,19 @@ export default function ChatInterface({
         })
       })
 
-      if (!response.ok) throw new Error('Network response was not ok')
-      if (!response.body) throw new Error('No response body')
+      if (!response.ok) {
+        let errorMessage = 'Failed to connect to the AI service.'
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.error || errorMessage
+        } catch (e) {
+          // If response is not JSON, use default or status text
+          errorMessage = `Error ${response.status}: ${response.statusText || errorMessage}`
+        }
+        throw new Error(errorMessage)
+      }
+      
+      if (!response.body) throw new Error('No response body from AI service.')
 
       const reader = response.body.getReader()
       const decoder = new TextDecoder()
@@ -220,9 +241,11 @@ export default function ChatInterface({
         }
       }
 
-    } catch (error) {
-      console.error('Error:', error)
-      alert("Failed to send message")
+    } catch (error: any) {
+      console.error('Chat Error:', error)
+      setError(error.message || "Failed to send message. Please try again.")
+      // Remove the empty assistant message if it failed
+      setMessages(prev => prev.filter(msg => msg.content !== '' || msg.role !== 'assistant'))
     } finally {
       setIsLoading(false)
     }
@@ -272,7 +295,20 @@ export default function ChatInterface({
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-100">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-100 relative">
+        {/* Error Toast */}
+        {error && (
+          <div className="absolute top-4 left-4 right-4 z-50 animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-xl shadow-lg flex items-center gap-3">
+              <AlertCircle className="shrink-0 w-5 h-5 text-red-600" />
+              <div className="flex-1 text-sm font-medium">{error}</div>
+              <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600 transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+        )}
+
         {isFetchingHistory && (
           <div className="flex justify-center mt-10">
             <div className="animate-pulse text-primary">Loading your conversation...</div>
@@ -381,8 +417,13 @@ export default function ChatInterface({
 
         {isLoading && messages[messages.length - 1]?.role === 'user' && (
           <div className="flex justify-start">
-            <div className="bg-200 text-text rounded-2xl px-4 py-2 text-sm animate-pulse">
-              Thinking...
+            <div className="bg-200 text-text rounded-2xl px-4 py-2 text-sm animate-pulse flex items-center gap-2">
+              <span className="flex gap-1">
+                <span className="w-1 h-1 bg-text/50 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                <span className="w-1 h-1 bg-text/50 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                <span className="w-1 h-1 bg-text/50 rounded-full animate-bounce"></span>
+              </span>
+              Analyzing your profile...
             </div>
           </div>
         )}
