@@ -2,8 +2,8 @@ import os
 import json
 import asyncio
 import PyPDF2
-from fastapi import FastAPI, HTTPException, BackgroundTasks
-from fastapi.responses import StreamingResponse
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Response
+from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
@@ -528,8 +528,10 @@ async def chat_endpoint(request: ChatRequest):
         current_instructions += probe_injection
 
     # --- 5. INJECT MEMORY INTO SYSTEM PROMPT ---
+    fallback_prompt = "\n\nFALLBACK INSTRUCTION: If the user inputs gibberish, malformed text, or goes completely off-topic, do not break any JSON schema or attempt to generate paths. Instead, politely acknowledge the confusion and gently guide them back to the career conversation or onboarding assessment."
+
     if request.mode == "onboard":
-        system_content = current_instructions
+        system_content = current_instructions + fallback_prompt
     else:
         system_content = f"""You are a career sensei. You are kind yet stern. You are insightful, but let the user find their own way. You are zen, but not overly spiritual. 
         You exist to guide the user on a journey of self-discovery to find their Ikigai - the place where What they love, What they are good at, What the world needs, and What they can be paid for intersect.
@@ -540,6 +542,7 @@ async def chat_endpoint(request: ChatRequest):
         
         - Make sure response lengths match the content of the reponse.
         - Keep it short where necessary and verbose as needed.
+        {fallback_prompt}
 
         This is how the idea of Ikigai works, keep it in mind as you chat with the user:
 
@@ -587,26 +590,39 @@ async def chat_endpoint(request: ChatRequest):
             asyncio.create_task(save_message(request.user_id, "assistant", fake_response))
         return StreamingResponse(mock_stream(), media_type="text/plain")
 
-    async def generate_stream():
+    # --- Step 4: Call OpenAI ---
+    try:
+        # We initialize the stream here to catch any immediate connection or authentication errors
+        stream = await openai_client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=final_messages,
+            stream=True,
+            timeout=20.0 # 20 second timeout for the initial connection
+        )
+    except Exception as e:
+        print(f"❌ OpenAI API Error: {e}")
+        return JSONResponse(
+            status_code=503,
+            content={"error": "The AI service is currently experiencing high traffic or a timeout. Please try again in a moment."}
+        )
+
+    async def generate_stream(stream_obj):
         full_response = ""
         try:
-            stream = await openai_client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=final_messages,
-                stream=True
-            )
-            async for chunk in stream:
+            async for chunk in stream_obj:
                 if chunk.choices[0].delta.content:
                     text = chunk.choices[0].delta.content
                     full_response += text
                     yield text 
             
+            # Save the complete response to history
             asyncio.create_task(save_message(request.user_id, "assistant", full_response))
 
         except Exception as e:
-            yield f"Error: {str(e)}"
+            print(f"❌ Stream error during generation: {e}")
+            yield f"\n[Connection lost. Please try again.]"
 
-    return StreamingResponse(generate_stream(), media_type="text/plain")
+    return StreamingResponse(generate_stream(stream), media_type="text/plain")
 
 if __name__ == "__main__":
     import uvicorn
