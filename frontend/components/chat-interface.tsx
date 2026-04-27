@@ -46,7 +46,8 @@ export default function ChatInterface({
 
   // Auto-focus input
   useEffect(() => {
-    if (!isLoading && !isOnboardingDone) {
+    // Only auto-focus on desktop to avoid mobile keyboard layout shifts
+    if (!isLoading && !isOnboardingDone && window.innerWidth >= 1024) {
       inputRef.current?.focus()
     }
   }, [isLoading, isOnboardingDone, activeGem])
@@ -57,7 +58,7 @@ export default function ChatInterface({
 
       try {
         // 1. Fetch Chat History
-        const historyUrl = `http://localhost:8000/chat/history/${userId}`
+        const historyUrl = `${process.env.NEXT_PUBLIC_API_URL}/chat/history/${userId}`
         const historyResponse = await fetch(historyUrl)
         let historyMessages: Message[] = []
         if (historyResponse.ok) {
@@ -116,6 +117,50 @@ export default function ChatInterface({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  const handleSavePath = async (path: ProposedPath, pathIndex: number, messageId: string) => {
+    const uniqueId = `${messageId}-${pathIndex}`
+    if (savedPathIds.includes(uniqueId)) return
+
+    try {
+      // 1. Fetch current profile
+      const { data: profile, error: fetchError } = await supabase
+        .from('profiles')
+        .select('saved_paths')
+        .eq('id', userId)
+        .single()
+
+      if (fetchError) throw fetchError
+
+      const currentPaths = profile?.saved_paths || []
+      
+      // 2. Append new path
+      const newPath = {
+        id: Date.now().toString(),
+        title: path.title,
+        description: path.description,
+        real_world_titles: path.real_world_titles,
+        estimated_salary: path.estimated_salary,
+        created_at: new Date().toISOString()
+      }
+
+      const updatedPaths = [...currentPaths, newPath]
+
+      // 3. Update table
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ saved_paths: updatedPaths })
+        .eq('id', userId)
+
+      if (updateError) throw updateError
+
+      setSavedPaths(updatedPaths)
+      setSavedPathIds(prev => [...prev, uniqueId])
+    } catch (error) {
+      console.error("Error saving path:", error)
+      alert("Failed to save path.")
+    }
+  }
+
   const sendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return
 
@@ -136,7 +181,7 @@ export default function ChatInterface({
         content: ''
       }])
 
-      const response = await fetch('http://localhost:8000/chat', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -393,7 +438,7 @@ export default function ChatInterface({
 
         {/* Mode Selector UI */}
         {!onboardingMode && (
-          <div className="flex items-center justify-center gap-2">
+          <div className="flex items-center justify-left gap-2">
             <span className="text-xs font-semibold text-secondary-text uppercase tracking-wider mr-2">Goal:</span>
 
             <button 
@@ -429,7 +474,7 @@ export default function ChatInterface({
         <form onSubmit={handleSubmit} className="flex gap-2">
           <input
             ref={inputRef}
-            className="flex-1 px-4 py-2 bg-200 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-text placeholder-secondary-text"
+            className="flex-1 px-5 h-12 bg-200 rounded-full focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-text placeholder-secondary-text text-base"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={
@@ -443,9 +488,9 @@ export default function ChatInterface({
           <button
             type="submit"
             disabled={isLoading || !input.trim() || (onboardingMode && isOnboardingDone)}
-            className="bg-primary text-white p-2 rounded-full hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="bg-primary text-white w-12 h-12 flex items-center justify-center rounded-full hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
             </svg>
           </button>

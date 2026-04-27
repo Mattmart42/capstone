@@ -136,13 +136,13 @@ export default function SavedPaths({ userId }: { userId: string }) {
             <Map className="text-primary" size={32} />
             My Paths
           </h1>
-          <p className="text-secondary-text mt-2">Saved career trajectories and life blueprints.</p>
+          <p className="text-secondary-text mt-2 px-2">Saved career trajectories and life blueprints.</p>
         </div>
         <button 
           onClick={() => setIsAdding(true)}
-          className="bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-full font-semibold flex items-center gap-2 transition-all hover:shadow-md hover:-translate-y-0.5"
+          className="bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-2xl font-semibold flex items-center gap-2 transition-all hover:shadow-md hover:-translate-y-0.5"
         >
-          <Plus size={18} /> Add Path
+          <Plus size={18} /> Path
         </button>
       </div>
 
@@ -177,7 +177,7 @@ export default function SavedPaths({ userId }: { userId: string }) {
             const isEditing = editingPathId === path.id
             
             return (
-              <div key={path.id} className={`bg-surface border ${isEditing ? 'border-primary ring-2 ring-primary-light shadow-lg' : 'border-border'} rounded-2xl p-6 shadow-sm hover:shadow-md transition-all group flex flex-col relative overflow-hidden`}>
+              <div key={path.id} className={`bg-100 border ${isEditing ? 'border-primary ring-2 ring-primary-light shadow-lg' : 'border-border'} rounded-2xl p-6 shadow-sm hover:shadow-md transition-all group flex flex-col relative overflow-hidden`}>
                 <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-primary-light ${isEditing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`} />
                 
                 {isEditing && editFormData ? (
@@ -192,23 +192,23 @@ export default function SavedPaths({ userId }: { userId: string }) {
 
                     <div>
                       <input 
-                        className="w-full px-3 py-2 text-sm font-bold border border-border rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
+                        className="w-full px-3 py-2 text-sm text-secondary-text font-bold border border-300 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
                         value={editFormData.title}
                         onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })}
                         placeholder="Path Title"
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 gap-2">
                       <input 
-                        className="w-full px-3 py-2 text-[11px] border border-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
+                        className="w-full px-3 py-2 text-[11px] text-secondary-text border border-300 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
                         value={editFormData.estimated_salary || ''}
                         onChange={(e) => setEditFormData({ ...editFormData, estimated_salary: e.target.value })}
                         placeholder="Salary (e.g. $100k)"
                       />
                       <div className="flex gap-1">
                         <input 
-                          className="flex-1 px-3 py-2 text-[11px] border border-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
+                          className="flex-1 px-3 py-2 text-[11px] text-secondary-text border border-300 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none"
                           value={editTempTitle}
                           onChange={(e) => setEditTempTitle(e.target.value)}
                           placeholder="Add Title..."
@@ -242,7 +242,7 @@ export default function SavedPaths({ userId }: { userId: string }) {
                     )}
 
                     <textarea 
-                      className="w-full flex-1 px-3 py-2 text-xs border border-200 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none resize-none leading-relaxed"
+                      className="w-full flex-1 px-3 py-2 text-xs text-secondary-text border border-300 rounded-lg focus:ring-2 focus:ring-primary focus:outline-none resize-none leading-relaxed"
                       rows={4}
                       value={editFormData.description}
                       onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
@@ -262,7 +262,7 @@ export default function SavedPaths({ userId }: { userId: string }) {
                           setEditingPathId(null)
                           setEditFormData(null)
                         }}
-                        className="px-3 py-2 text-xs font-bold text-text hover:bg-100 rounded-lg transition-colors"
+                        className="px-3 py-2 text-xs font-bold text-text hover:bg-200 rounded-lg transition-colors"
                       >
                         Cancel
                       </button>
@@ -276,7 +276,7 @@ export default function SavedPaths({ userId }: { userId: string }) {
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <h3 className="text-lg font-bold text-text leading-tight font-serif">{path.title}</h3>
                           {path.estimated_salary && (
-                            <span className="bg-success-light text-success rounded-full px-2 py-0.5 text-[10px] font-bold shadow-sm">
+                            <span className="bg-primary text-success-light rounded-full px-2 py-0.5 text-[10px] font-bold">
                               {path.estimated_salary}
                             </span>
                           )}
@@ -293,7 +293,7 @@ export default function SavedPaths({ userId }: { userId: string }) {
                         )}
                       </div>
 
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex gap-1 md:opacity-0 group-hover:opacity-100 transition-opacity">
                         <button 
                           onClick={() => {
                             setEditingPathId(path.id)
@@ -305,7 +305,7 @@ export default function SavedPaths({ userId }: { userId: string }) {
                         </button>
                         <button 
                           onClick={() => handleDelete(path.id)}
-                          className="text-text hover:text-red-500 hover:bg-red-50 p-1.5 rounded-md transition-colors"
+                          className="text-text hover:text-red-500 hover:bg-red-500/20 p-1.5 rounded-md transition-colors"
                         >
                           <Trash2 size={16} />
                         </button>
@@ -330,7 +330,7 @@ export default function SavedPaths({ userId }: { userId: string }) {
       {/* Manual Creation Modal */}
       {isAdding && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-700/40 backdrop-blur-sm animate-in fade-in duration-200 px-4">
-          <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-border animate-in zoom-in-95 duration-200">
+          <div className="bg-surface rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden border border-border animate-in zoom-in-95 duration-200">
             
             <div className="bg-100 p-4 flex justify-between items-center">
               <h3 className="text-lg font-bold text-text">Map a New Path</h3>
@@ -343,7 +343,7 @@ export default function SavedPaths({ userId }: { userId: string }) {
               <div className="h-px bg-300 w-full" />
             </div>
 
-            <div className="bg-100 p-6 space-y-5">
+            <div className="bg-100 p-4 md:p-6 space-y-5 overflow-y-auto">
               <div>
                 <label className="block text-xs font-bold text-text uppercase tracking-wider mb-2">Path Title</label>
                 <input 
@@ -356,7 +356,7 @@ export default function SavedPaths({ userId }: { userId: string }) {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-text uppercase tracking-wider mb-2">Salary Range (Optional)</label>
                   <input 
@@ -373,7 +373,7 @@ export default function SavedPaths({ userId }: { userId: string }) {
                     <input 
                       type="text"
                       placeholder="Add title..."
-                      className="flex-1 px-4 py-2.5 border border-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-text placeholder-secondary-text font-medium"
+                      className="flex-1 min-w-0 px-4 py-2.5 border border-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-text placeholder-secondary-text font-medium"
                       value={tempTitle}
                       onChange={(e) => setTempTitle(e.target.value)}
                       onKeyDown={(e) => {

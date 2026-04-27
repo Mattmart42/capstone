@@ -4,7 +4,7 @@ export async function checkOnboardingStatus(userId: string) {
   const supabase = await createClient()
   
   try {
-    const historyResponse = await fetch(`http://localhost:8000/chat/history/${userId}`)
+    const historyResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat/history/${userId}`)
     if (historyResponse.ok) {
       const { messages } = await historyResponse.json()
       const isComplete = messages.some((m: any) => 

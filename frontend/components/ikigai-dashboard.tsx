@@ -48,6 +48,8 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
   // Interaction State
   const [draggingNode, setDraggingNode] = useState<string | null>(null)
   const [dragStartPos, setDragStartPos] = useState<{ x: number, y: number } | null>(null)
+  const [dragStartPointer, setDragStartPointer] = useState<{ x: number, y: number } | null>(null)
+  const [selectedNode, setSelectedNode] = useState<string | null>(null)
   const [localPositions, setLocalPositions] = useState<Record<string, { x: number, y: number }>>({})
   const [sidebarZone, setSidebarZone] = useState<string | null>(null)
 
@@ -62,6 +64,10 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
   const resetCamera = useCallback(() => {
     if (!containerRef.current) return
     const { clientWidth, clientHeight } = containerRef.current
+    
+    // Prevent math errors if container is hidden/zero-sized
+    if (clientWidth <= 0 || clientHeight <= 0) return
+
     const padding = 40 
     const availableW = clientWidth - (padding * 2)
     const availableH = clientHeight - (padding * 2)
@@ -73,9 +79,19 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
   }, [])
 
   useEffect(() => {
-    resetCamera()
-    window.addEventListener('resize', resetCamera)
-    return () => window.removeEventListener('resize', resetCamera)
+    if (!containerRef.current) return
+
+    // Use ResizeObserver to detect when the container actually gets dimensions
+    // (Crucial for mobile where the canvas starts hidden in a tab)
+    const observer = new ResizeObserver(() => {
+      resetCamera()
+    })
+
+    observer.observe(containerRef.current)
+    
+    return () => {
+      observer.disconnect()
+    }
   }, [resetCamera])
 
   // --- 2. DATA FETCHING & REALTIME ---
@@ -134,33 +150,68 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
   }, [userId, supabase])
 
   // --- 3. THE DROP ZONE MATH (RADIAL INTERSECTION & TRASH COLLISION) ---
-  const handlePointerMove = (e: React.PointerEvent) => {
+  const handlePointerMove = (e: React.PointerEvent | React.TouchEvent) => {
     if (!draggingNode || !boardRef.current) return
     
+    let clientX, clientY;
+    if ('touches' in e) {
+      if (e.touches.length === 0) return;
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+
     const rect = boardRef.current.getBoundingClientRect()
     setLocalPositions(prev => ({
       ...prev,
-      [draggingNode]: { x: (e.clientX - rect.left) / zoom, y: (e.clientY - rect.top) / zoom }
+      [draggingNode]: { x: (clientX - rect.left) / zoom, y: (clientY - rect.top) / zoom }
     }))
 
     if (trashRef.current) {
       const trashRect = trashRef.current.getBoundingClientRect()
       const isHovering = (
-        e.clientX >= trashRect.left && e.clientX <= trashRect.right &&
-        e.clientY >= trashRect.top && e.clientY <= trashRect.bottom
+        clientX >= trashRect.left && clientX <= trashRect.right &&
+        clientY >= trashRect.top && clientY <= trashRect.bottom
       )
       setIsHoveringTrash(isHovering)
     }
   }
 
-  const handlePointerUp = async (e: React.PointerEvent) => {
+  const handlePointerUp = async (e: React.PointerEvent | React.TouchEvent) => {
     if (!draggingNode || !boardRef.current) return
+
+    let clientX, clientY;
+    if ('changedTouches' in e) {
+      if (e.changedTouches.length === 0) return;
+      clientX = e.changedTouches[0].clientX;
+      clientY = e.changedTouches[0].clientY;
+    } else {
+      clientX = (e as React.PointerEvent).clientX;
+      clientY = (e as React.PointerEvent).clientY;
+    }
+
+    // Detect if this was a "tap" (very little movement)
+    const moveThreshold = 5
+    const hasMoved = dragStartPointer && (
+      Math.abs(clientX - dragStartPointer.x) > moveThreshold || 
+      Math.abs(clientY - dragStartPointer.y) > moveThreshold
+    )
+
+    if (!hasMoved) {
+      setSelectedNode(prev => prev === draggingNode ? null : draggingNode)
+      setDraggingNode(null)
+      setDragStartPos(null)
+      setDragStartPointer(null)
+      return
+    }
 
     if (trashRef.current) {
       const trashRect = trashRef.current.getBoundingClientRect()
       if (
-        e.clientX >= trashRect.left && e.clientX <= trashRect.right &&
-        e.clientY >= trashRect.top && e.clientY <= trashRect.bottom
+        clientX >= trashRect.left && clientX <= trashRect.right &&
+        clientY >= trashRect.top && clientY <= trashRect.bottom
       ) {
         const nodeToDelete = draggingNode
         setDraggingNode(null)
@@ -177,8 +228,8 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
     setIsHoveringTrash(false) 
     
     const rect = boardRef.current.getBoundingClientRect()
-    const dropX = (e.clientX - rect.left) / zoom
-    const dropY = (e.clientY - rect.top) / zoom
+    const dropX = (clientX - rect.left) / zoom
+    const dropY = (clientY - rect.top) / zoom
 
     const checkInside = (cx: number, cy: number) => Math.hypot(dropX - cx, dropY - cy) <= CIRCLE_RADIUS
 
@@ -332,13 +383,20 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
                 e.stopPropagation(); 
                 setDraggingNode(node.concept);
                 setDragStartPos(localPositions[node.concept] || null); 
+                setDragStartPointer({ x: e.clientX, y: e.clientY });
+              }}
+              onTouchStart={(e) => {
+                e.stopPropagation();
+                setDraggingNode(node.concept);
+                setDragStartPos(localPositions[node.concept] || null);
+                setDragStartPointer({ x: e.touches[0].clientX, y: e.touches[0].clientY });
               }}
             >
               <div className="relative flex justify-center items-center hover:scale-110 transition-transform duration-200">
                 {getShape(score)}
                 
                 {/* Tooltip */}
-                <div className="absolute bottom-full mb-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto flex flex-col items-center">
+                <div className={`absolute bottom-full mb-1 transition-opacity pointer-events-auto flex flex-col items-center ${selectedNode === node.concept ? 'opacity-100 z-[100]' : 'opacity-0 group-hover:opacity-100'}`}>
                   <div className="bg-600 text-white text-[11px] font-bold px-2.5 py-1 rounded shadow-lg whitespace-nowrap flex items-center gap-2">
                     {node.concept}
                     {onAskCoach && (
@@ -346,6 +404,7 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
                         onPointerDown={(e) => {
                           e.stopPropagation();
                           onAskCoach(node);
+                          setSelectedNode(null);
                         }}
                         className="ml-1 bg-primary hover:bg-primary-hover text-[9px] px-1.5 py-0.5 rounded transition-colors"
                       >
@@ -384,6 +443,8 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerUp}
+      onTouchMove={handlePointerMove}
+      onTouchEnd={handlePointerUp}
     >
       
       {/* --- THE DIAGRAM VIEWPORT --- */}
@@ -396,6 +457,7 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
         <div 
           ref={boardRef}
           className="absolute origin-top-left bg-surface rounded-full"
+          onPointerDown={() => setSelectedNode(null)}
           style={{ 
             width: BOARD_SIZE, height: BOARD_SIZE,
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
@@ -437,27 +499,26 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
         </div>
 
         {/* --- UI CONTROLS (D-PAD, ZOOM, ADD & TRASH) --- */}
-        <div className="absolute bottom-6 left-6 flex items-end gap-4 z-40">
+        <div className="absolute bottom-6 left-6 flex items-end gap-4 z-40 scale-90 md:scale-100 origin-bottom-left">
           
           <div className="grid grid-cols-3 grid-rows-3 gap-1 bg-200/50 backdrop-blur p-2 rounded-xl">
             <div />
-            <button onClick={() => setPan(p => ({ ...p, y: p.y + 100 }))} className="p-2 bg-300 hover:bg-400 rounded text-600"><ChevronUp size={18}/></button>
+            <button onClick={() => setPan(p => ({ ...p, y: p.y + 100 }))} className="w-11 h-11 flex items-center justify-center bg-300 hover:bg-400 rounded text-600"><ChevronUp size={20}/></button>
             <div />
-            <button onClick={() => setPan(p => ({ ...p, x: p.x + 100 }))} className="p-2 bg-300 hover:bg-400 rounded text-600"><ChevronLeft size={18}/></button>
+            <button onClick={() => setPan(p => ({ ...p, x: p.x + 100 }))} className="w-11 h-11 flex items-center justify-center bg-300 hover:bg-400 rounded text-600"><ChevronLeft size={20}/></button>
             
-            <button onClick={resetCamera} className="p-2 bg-primary-light hover:bg-primary-light rounded text-primary" title="Center & Fit Board"><Maximize size={18}/></button>
+            <button onClick={resetCamera} className="w-11 h-11 flex items-center justify-center bg-primary-light hover:bg-primary-light rounded text-primary" title="Center & Fit Board"><Maximize size={20}/></button>
             
-            <button onClick={() => setPan(p => ({ ...p, x: p.x - 100 }))} className="p-2 bg-300 hover:bg-400 rounded text-600"><ChevronRight size={18}/></button>
+            <button onClick={() => setPan(p => ({ ...p, x: p.x - 100 }))} className="w-11 h-11 flex items-center justify-center bg-300 hover:bg-400 rounded text-600"><ChevronRight size={20}/></button>
             <div />
-            <button onClick={() => setPan(p => ({ ...p, y: p.y - 100 }))} className="p-2 bg-300 hover:bg-400 rounded text-600"><ChevronDown size={18}/></button>
+            <button onClick={() => setPan(p => ({ ...p, y: p.y - 100 }))} className="w-11 h-11 flex items-center justify-center bg-300 hover:bg-400 rounded text-600"><ChevronDown size={20}/></button>
             <div />
           </div>
 
-          <div className="flex flex-col gap-2 bg-200/50 backdrop-blur p-2 rounded-xl">
-            <button onClick={() => setIsAddingNode(true)} className="p-3 bg-primary hover:bg-primary-hover rounded text-white transition-colors" title="Create a new Gem manually"><Plus size={20}/></button>
-            <div className="h-px bg-300 w-full" />
-            <button onClick={() => setZoom(z => Math.min(z + 0.3, 4))} className="p-3 bg-300 hover:bg-400 rounded text-600"><ZoomIn size={20}/></button>
-            <button onClick={() => setZoom(z => Math.max(z - 0.3, 0.2))} className="p-3 bg-300 hover:bg-400 rounded text-600"><ZoomOut size={20}/></button>
+          <div className="flex flex-row gap-2 bg-200/50 backdrop-blur p-2 rounded-xl">
+            <button onClick={() => setZoom(z => Math.min(z + 0.3, 4))} className="w-11 h-11 flex items-center justify-center bg-300 hover:bg-400 rounded text-600"><ZoomIn size={24}/></button>
+            <button onClick={() => setZoom(z => Math.max(z - 0.3, 0.2))} className="w-11 h-11 flex items-center justify-center bg-300 hover:bg-400 rounded text-600"><ZoomOut size={24}/></button>
+            <button onClick={() => setIsAddingNode(true)} className="w-11 h-11 flex items-center justify-center bg-primary hover:bg-primary-hover rounded text-white transition-colors" title="Create a new Gem manually"><Plus size={24}/></button>
           </div>
 
           {/* The Trash Can Drop Zone */}
@@ -500,7 +561,7 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
             {(sidebarZone ? zones[sidebarZone] : zones.exploring).map(node => (
               <div 
                 key={node.concept} 
-                className="bg-200 p-3 rounded-lg cursor-grab active:cursor-grabbing hover:border-primary transition-colors"
+                className="bg-200 p-3 rounded-lg cursor-grab active:cursor-grabbing hover:border-primary transition-colors touch-none"
                 onPointerDown={(e) => {
                   e.stopPropagation();
                   setDraggingNode(node.concept);
@@ -510,6 +571,18 @@ export default function IkigaiDashboard({ userId, onAskCoach }: { userId: string
                     const rect = boardRef.current.getBoundingClientRect()
                     const x = (e.clientX - rect.left) / zoom
                     const y = (e.clientY - rect.top) / zoom
+                    setLocalPositions(prev => ({ ...prev, [node.concept]: { x, y } }))
+                  }
+                }}
+                onTouchStart={(e) => {
+                  e.stopPropagation();
+                  setDraggingNode(node.concept);
+                  setDragStartPos(null);
+                  
+                  if (boardRef.current) {
+                    const rect = boardRef.current.getBoundingClientRect()
+                    const x = (e.touches[0].clientX - rect.left) / zoom
+                    const y = (e.touches[0].clientY - rect.top) / zoom
                     setLocalPositions(prev => ({ ...prev, [node.concept]: { x, y } }))
                   }
                 }}
