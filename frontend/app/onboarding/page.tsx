@@ -22,7 +22,7 @@ export default function OnboardingPage() {
       
       // Check if onboarding is complete by looking at history
       try {
-        const historyResponse = await fetch(`http://localhost:8000/chat/history/${user.id}`)
+        const historyResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/chat/history/${user.id}`)
         if (historyResponse.ok) {
           const { messages } = await historyResponse.json()
           const isComplete = messages.some((m: any) => 
