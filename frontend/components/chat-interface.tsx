@@ -172,7 +172,7 @@ export default function ChatInterface({
   }
 
   const sendMessage = async (text: string) => {
-    if (!text.trim() || isLoading) return
+    if (isLoading || !text.trim()) return
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -253,13 +253,14 @@ export default function ChatInterface({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!input.trim() || isLoading) return
+    if (isLoading || !input.trim()) return
     const textToSend = input
     setInput('')
     await sendMessage(textToSend)
   }
 
   const handleSuggestionClick = async (suggestion: string) => {
+    if (isLoading || !suggestion.trim()) return
     await sendMessage(suggestion)
     clearActiveGem()
   }

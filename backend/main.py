@@ -187,11 +187,12 @@ async def update_user_profile(user_id: str, new_text: str):
         # 3. Convert the merged dictionary back into a flat list
         updated_nodes = list(node_map.values())
         
-        # 4. Save the safely combined list back to Supabase
-        supabase.table("profiles").update({
+        # 4. Save the safely combined list back to Supabase (Upsert to create profile if missing)
+        supabase.table("profiles").upsert({
+            "id": user_id,
             "ikigai_nodes": updated_nodes,
             "updated_at": datetime.now().isoformat()
-        }).eq("id", user_id).execute()
+        }).execute()
         
         print(f"✅ Merged {len(new_nodes)} updates. Total nodes: {len(updated_nodes)}")
         
@@ -360,30 +361,29 @@ async def chat_endpoint(request: ChatRequest):
     except Exception as e:
         print(f"Error fetching profile context: {e}")
 
-    # --- CALCULATE WEAKEST PILLAR ---
+    # --- CALCULATE PILLAR COUNTS FOR ONBOARDING TRACKING ---
     pillar_counts = {"ik": 0, "i": 0, "g": 0, "ai": 0}
     for node in nodes:
         if node.get("ik"): pillar_counts["ik"] += 1
         if node.get("i"): pillar_counts["i"] += 1
         if node.get("g"): pillar_counts["g"] += 1
         if node.get("ai"): pillar_counts["ai"] += 1
-
-    weakest_pillar_key = min(pillar_counts, key=pillar_counts.get)
-    weakest_pillar_count = pillar_counts[weakest_pillar_key]
     
-    pillar_names = {
-        "ik": "Love",
-        "i": "Good At",
-        "g": "World Needs",
-        "ai": "Paid For"
-    }
-    weakest_pillar_name = pillar_names[weakest_pillar_key]
+    pillar_summary = f"Pillar Progress: Love: {pillar_counts['ik']}, Good At: {pillar_counts['i']}, World Needs: {pillar_counts['g']}, Paid For: {pillar_counts['ai']}."
 
     # --- DYNAMIC MODE INSTRUCTIONS ---
     mode_instructions = {
-        "onboard": """SYSTEM: You are a master career psychologist conducting an onboarding assessment 
+        "onboard": f"""SYSTEM: You are a master career psychologist conducting an onboarding assessment 
         for a new user on the IkigAI platform. Your goal is to map their personality, practical needs, 
         and skills to the four Ikigai pillars (Love, Good At, Needs, Paid).
+
+        {pillar_summary}
+
+        CRITICAL INSTRUCTION: Before you ask a question, you MUST review the entire Chat History and the current Pillar Progress. 
+
+        You are gathering data for 4 pillars. Identify which pillars are already answered or have enough data points. 
+        DO NOT ask a question about a pillar that has already been covered. 
+        DO NOT repeat a question. If a user gives a brief answer, you may ask ONE follow-up, but then you MUST move on to the next empty pillar.
 
         YOU MUST STRICTLY FOLLOW THIS CONVERSATIONAL FORMULA FOR EVERY TURN:
         1. VALIDATE & SYNTHESIZE: Start your response by warmly acknowledging their last answer. 
@@ -393,6 +393,8 @@ async def chat_endpoint(request: ChatRequest):
         3. ASK ONE QUESTION: Ask EXACTLY ONE question. NEVER ask two questions in the same message.
 
         QUESTION STRATEGY:
+        - Your goal is to extract TANGIBLE activities, hard/soft skills, industries, and passions.
+        - Encourage the user to be specific (e.g., instead of 'I like tech', guide them to 'I enjoy Python backend development').
         - Interleave deep psychological questions with easy practical ones to prevent fatigue.
         - To assess 'Love/Passion', ask about free time, curiosity, and ideal Saturdays.
         - To assess 'Good At', ask about tasks that feel effortless, group dynamics, and problem-solving styles.
@@ -531,7 +533,11 @@ async def chat_endpoint(request: ChatRequest):
     fallback_prompt = "\n\nFALLBACK INSTRUCTION: If the user inputs gibberish, malformed text, or goes completely off-topic, do not break any JSON schema or attempt to generate paths. Instead, politely acknowledge the confusion and gently guide them back to the career conversation or onboarding assessment."
 
     if request.mode == "onboard":
-        system_content = current_instructions + fallback_prompt
+        system_content = f"""{current_instructions}
+        
+        {profile_context}
+        
+        {fallback_prompt}"""
     else:
         system_content = f"""You are a career sensei. You are kind yet stern. You are insightful, but let the user find their own way. You are zen, but not overly spiritual. 
         You exist to guide the user on a journey of self-discovery to find their Ikigai - the place where What they love, What they are good at, What the world needs, and What they can be paid for intersect.
@@ -573,8 +579,8 @@ async def chat_endpoint(request: ChatRequest):
         "content": system_content
     }
 
-    # 6. Prepare messages (System Prompt + Last 10 Chat Messages)
-    final_messages = [system_prompt] + [msg.model_dump() for msg in request.messages[-10:]]
+    # 6. Prepare messages (System Prompt + Full Chat History)
+    final_messages = [system_prompt] + [msg.model_dump() for msg in request.messages]
 
     # --- Step 3 Hand-off: Append the silent system note for advise mode ---
     if advise_system_note:
