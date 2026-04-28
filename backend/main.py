@@ -16,13 +16,13 @@ import uuid
 
 load_dotenv()
 
-app = FastAPI(title="IkigAI Nexus API")
+app = FastAPI(title="Ikig.AI API")
 
 # --- Config ---
 TEST_MODE = False # Set to False to use real OpenAI
 
 # Reminder: Add your computer's local IP address (e.g., "http://192.168.1.x:3000") to ALLOWED_ORIGINS in .env when testing on mobile.
-allowed_origins = os.environ.get("ALLOWED_ORIGINS", "http://localhost:3000,https://ikig.ai.vercel.app").split(",")
+allowed_origins = os.environ.get("ALLOWED_ORIGINS", "http://localhost:3000,https://ikig.ai.vercel.app,https://capstone-nine-iota.vercel.app").split(",")
 
 app.add_middleware(
     CORSMiddleware,
