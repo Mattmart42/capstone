@@ -127,7 +127,7 @@ export default function SavedPaths({ userId }: { userId: string }) {
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto p-6 md:p-8">
+    <div className="w-full max-w-6xl mx-auto p-6 md:p-8 pb-20">
       
       {/* Header */}
       <div className="flex justify-between items-center mb-8">

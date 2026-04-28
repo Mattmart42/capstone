@@ -17,7 +17,7 @@ export default async function PathsPage() {
   }
 
   return (
-    <div className="h-full bg-200 overflow-hidden">
+    <div className="h-full bg-200 overflow-y-auto">
       <SavedPaths userId={user.id} />
     </div>
   )
