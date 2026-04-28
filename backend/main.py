@@ -371,6 +371,18 @@ async def chat_endpoint(request: ChatRequest):
     
     pillar_summary = f"Pillar Progress: Love: {pillar_counts['ik']}, Good At: {pillar_counts['i']}, World Needs: {pillar_counts['g']}, Paid For: {pillar_counts['ai']}."
 
+    # --- CALCULATE WEAKEST PILLAR ---
+    pillar_map = {
+        "ik": "What you love", 
+        "i": "What you are good at", 
+        "g": "What the world needs", 
+        "ai": "What you can be paid for"
+    }
+    # Default values
+    weakest_pillar_key = min(pillar_counts, key=pillar_counts.get)
+    weakest_pillar_name = pillar_map.get(weakest_pillar_key, "Love")
+    weakest_pillar_count = pillar_counts.get(weakest_pillar_key, 0)
+
     # --- DYNAMIC MODE INSTRUCTIONS ---
     mode_instructions = {
         "onboard": f"""SYSTEM: You are a master career psychologist conducting an onboarding assessment 
